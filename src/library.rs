@@ -250,7 +250,11 @@ pub fn import_curseforge_modpack(api_key: &str) -> Result<String, String> {
     if api_key.trim().is_empty() { return Err("Enter your CurseForge API key in Modpack Manager first.".to_owned()); }
     let archive_path = rfd::FileDialog::new().add_filter("CurseForge modpack export", &["zip"]).pick_file()
         .ok_or_else(|| "No CurseForge modpack selected.".to_owned())?;
-    let file = fs::File::open(&archive_path).map_err(|e| e.to_string())?;
+    import_curseforge_archive(&archive_path, api_key)
+}
+
+fn import_curseforge_archive(archive_path: &Path, api_key: &str) -> Result<String, String> {
+    let file = fs::File::open(archive_path).map_err(|e| e.to_string())?;
     let mut archive = zip::ZipArchive::new(file).map_err(|e| format!("Invalid CurseForge archive: {e}"))?;
     let mut manifest_text = String::new();
     archive.by_name("manifest.json").map_err(|_| "CurseForge export is missing manifest.json.".to_owned())?
