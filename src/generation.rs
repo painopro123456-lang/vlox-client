@@ -35,6 +35,47 @@ pub fn generate_world(seed: u64, chunk_radius: i32) -> World {
             world.insert_chunk(chunk_x, chunk_z, chunk);
         }
     }
+    // Add oak trees on grassland. World-coordinate writes let trees cross chunk edges.
+    let min_x = -chunk_radius * CHUNK_SIZE as i32 + 2;
+    let max_x = (chunk_radius + 1) * CHUNK_SIZE as i32 - 2;
+    let min_z = -chunk_radius * CHUNK_SIZE as i32 + 2;
+    let max_z = (chunk_radius + 1) * CHUNK_SIZE as i32 - 2;
+    let mut trees = Vec::new();
+    for z in min_z..max_z {
+        for x in min_x..max_x {
+            if let Some(surface) = world.surface_height(x, z) {
+                if world.get_block(x, surface as i32, z) == Block::Grass
+                    && hash_value(seed ^ 0xA24BAED4963EE407, x, z) > 0.985 {
+                    trees.push((x, surface as i32 + 1, z));
+                }
+            }
+        }
+    }
+
+    for (x, base_y, z) in trees {
+        let mut clear = true;
+        for y in base_y..base_y + 6 {
+            if world.get_block(x, y, z) != Block::Air { clear = false; }
+        }
+        if !clear { continue; }
+        for y in 0..4 {
+            world.set_block(x, base_y + y, z, Block::OakLog);
+        }
+        for dy in 2..=4 {
+            let radius = if dy == 4 { 1 } else { 2 };
+            for dz in -radius..=radius {
+                for dx in -radius..=radius {
+                    if dx.abs() == radius && dz.abs() == radius && dy != 4 { continue; }
+                    let leaf_x = x + dx;
+                    let leaf_y = base_y + dy;
+                    let leaf_z = z + dz;
+                    if world.get_block(leaf_x, leaf_y, leaf_z) == Block::Air {
+                        world.set_block(leaf_x, leaf_y, leaf_z, Block::OakLeaves);
+                    }
+                }
+            }
+        }
+    }
     world
 }
 
