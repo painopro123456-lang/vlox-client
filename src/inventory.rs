@@ -1,6 +1,6 @@
 use crate::world::Block;
 
-pub const HOTBAR_SLOTS: usize = 4;
+pub const HOTBAR_SLOTS: usize = 9;
 pub const MAX_STACK: u8 = 64;
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
