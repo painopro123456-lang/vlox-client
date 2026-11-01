@@ -30,7 +30,9 @@ jobs:
           if ((Get-Item 'client-mod/build/libs/fabric-api-0.161.0+26.2.jar').Length -lt 1000000) { throw 'Fabric API download is unexpectedly small.' }
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
-      - name: Build VLOX Desktop
+      - name: Build VLOX Desktop (static Visual C++ runtime)
+        env:
+          RUSTFLAGS: -C target-feature=+crt-static
         run: cargo build --release
       - name: Upload Windows executable
         uses: actions/upload-artifact@v4
