@@ -146,7 +146,7 @@ pub fn start_launch(sender: Sender<AuthEvent>) {
 
 fn run_async<F>(future: F) -> Result<(), String>
 where
-    F: std::future::Future<Output = Result<(), String>> + Send + 'static,
+    F: std::future::Future<Output = Result<(), String>>,
 {
     let runtime = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
