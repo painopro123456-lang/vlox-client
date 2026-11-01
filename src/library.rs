@@ -303,3 +303,58 @@ pub fn import_curseforge_modpack(api_key: &str) -> Result<String, String> {
     if let Err(error) = result { let _ = fs::remove_dir_all(&target); return Err(error); }
     Ok(format!("Installed CurseForge pack '{safe_name}'. Select it and launch from VLOX."))
 }
+
+
+#[derive(Clone, Debug)]
+pub struct CurseForgePack {
+    pub id: u64,
+    pub title: String,
+    pub summary: String,
+    pub downloads: u64,
+}
+
+pub fn search_curseforge_modpacks(query: &str, api_key: &str) -> Result<Vec<CurseForgePack>, String> {
+    if api_key.trim().is_empty() { return Err("Enter your CurseForge API key to search CurseForge.".to_owned()); }
+    let client = reqwest::blocking::Client::builder().user_agent("VLOX-CLIENT/0.4").build().map_err(|e| e.to_string())?;
+    let response = client.get("https://api.curseforge.com/v1/mods/search")
+        .header("x-api-key", api_key)
+        .query(&[
+            ("gameId", "432"), ("classId", "4471"), ("searchFilter", query),
+            ("pageSize", "20"), ("sortField", "6"), ("sortOrder", "desc"),
+            ("gameVersion", "26.2"), ("modLoaderType", "4"),
+        ])
+        .send().map_err(|e| format!("CurseForge search failed: {e}"))?
+        .error_for_status().map_err(|e| format!("CurseForge rejected the API key or search: {e}"))?;
+    let value: serde_json::Value = response.json().map_err(|e| e.to_string())?;
+    let data = value.get("data").and_then(|v| v.as_array()).ok_or("CurseForge returned an invalid search response")?;
+    Ok(data.iter().filter_map(|item| Some(CurseForgePack {
+        id: item.get("id")?.as_u64()?,
+        title: item.get("name")?.as_str()?.to_owned(),
+        summary: item.get("summary").and_then(|v| v.as_str()).unwrap_or("").to_owned(),
+        downloads: item.get("downloadCount").and_then(|v| v.as_u64()).unwrap_or(0),
+    })).collect())
+}
+
+pub fn install_curseforge_project(project_id: u64, api_key: &str) -> Result<String, String> {
+    if api_key.trim().is_empty() { return Err("Enter your CurseForge API key first.".to_owned()); }
+    let client = reqwest::blocking::Client::builder().user_agent("VLOX-CLIENT/0.4").build().map_err(|e| e.to_string())?;
+    let response = client.get(format!("https://api.curseforge.com/v1/mods/{project_id}/files"))
+        .header("x-api-key", api_key)
+        .query(&[("gameVersion", "26.2"), ("modLoaderType", "4"), ("pageSize", "20"), ("index", "0")])
+        .send().map_err(|e| e.to_string())?.error_for_status().map_err(|e| format!("CurseForge file lookup failed: {e}"))?;
+    let value: serde_json::Value = response.json().map_err(|e| e.to_string())?;
+    let files = value.get("data").and_then(|v| v.as_array()).ok_or("CurseForge returned no files")?;
+    let pack_file = files.iter().find(|f| f.get("isAvailable").and_then(|v| v.as_bool()) != Some(false)
+        && f.get("fileName").and_then(|v| v.as_str()).is_some_and(|n| n.to_lowercase().ends_with(".zip")))
+        .ok_or("No compatible CurseForge modpack ZIP was found for Minecraft 26.2 / Fabric.")?;
+    let url = pack_file.get("downloadUrl").and_then(|v| v.as_str())
+        .ok_or("CurseForge did not provide a direct download URL for this file")?;
+    let filename = pack_file.get("fileName").and_then(|v| v.as_str()).unwrap_or("curseforge-pack.zip");
+    let bytes = client.get(url).send().map_err(|e| e.to_string())?.error_for_status().map_err(|e| e.to_string())?.bytes().map_err(|e| e.to_string())?;
+    let temp = appdata()?.join(".vlox").join(format!("curseforge-{project_id}.zip"));
+    if let Some(parent) = temp.parent() { fs::create_dir_all(parent).map_err(|e| e.to_string())?; }
+    fs::write(&temp, &bytes).map_err(|e| e.to_string())?;
+    let result = import_curseforge_archive(&temp, api_key);
+    let _ = fs::remove_file(&temp);
+    result.map(|message| format!("{message} ({filename})"))
+}
