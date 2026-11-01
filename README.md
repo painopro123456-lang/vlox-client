@@ -1,75 +1,39 @@
 # VLOX CLIENT
 
-VLOX CLIENT is an independent Rust implementation project targeting the Minecraft Java Edition 26.2 experience. It uses its own engine and code; it does not contain Mojang's proprietary source or bundled Minecraft assets.
+VLOX CLIENT is a custom Minecraft Java client experience with two parts:
 
-## Current implementation
+- **VLOX Desktop** — a native desktop companion with a launcher-style interface.
+- **VLOX In-game** — a Fabric client mod that adds the VLOX menu and client-side UI options.
 
-The repository currently contains an early playable voxel-engine prototype with:
+This is an independent client-side add-on, not a replacement Minecraft game engine. It does not bundle Mojang assets.
 
-- Rust application and Macroquad 3D renderer.
-- Seeded procedural terrain with rolling height variation, grass/dirt/stone layers, sandy regions, generated oak trees, underground cave tunnels, and coal/iron ore deposits.
-- 16 × 16 × 64 block chunks with deterministic per-chunk terrain generation and runtime chunk streaming as the player explores.
-- First-person movement, gravity, jumping, solid-block collision, and sprinting.
-- Survival health and food meters, fall damage, food-based regeneration, and starvation damage.
-- A 20-minute day/night cycle with a changing sky color.
-- Voxel raycasting with a five-block reach.
-- Hold-to-mine behavior with different mining times for grass, dirt, sand, and stone.
-- Block placement adjacent to the targeted block, with player-overlap prevention.
-- Nine-slot survival hotbar, stack sizes up to 64, mined-block pickup, and item consumption when placing blocks.
-- Versioned binary world saving and loading.
-- Automated Rust tests for world data, generation, physics, raycasting, inventory, interactions, and persistence.
+## Current foundation
 
-This is still an early foundation, **not a complete Minecraft Java Edition replacement**. It does not yet implement the full Java Edition feature set, assets, world format, crafting, mobs, dimensions, redstone, or multiplayer/server protocol. Compatibility is not claimed until those systems are independently implemented and tested.
+The desktop app can open the installed Minecraft Launcher and copy a locally built VLOX mod JAR into the default Windows `.minecraft/mods` directory. The in-game menu opens with **Right Shift** and currently contains Home, HUD, Modules and Settings sections.
 
-## Build locally
+This is an early foundation. Direct Microsoft authentication, automatic profile/version installation, direct game launching, persistent settings and the full feature set are not implemented yet.
 
-Install the stable Rust toolchain, then run:
+## Build
 
+Desktop (stable Rust):
 ```sh
 cargo run
-```
-
-Release build:
-
-```sh
 cargo build --release
 ```
 
-## Controls
+Fabric mod (JDK 21 and Gradle):
+```sh
+cd client-mod
+gradle build
+```
 
-| Input | Action |
-|---|---|
-| W A S D | Move |
-| Left Control | Sprint |
-| Space | Jump |
-| Hold right mouse button | Look around |
-| Hold left mouse button | Mine targeted block |
-| F | Place selected block in the adjacent cell |
-| 1–9 | Select hotbar slot |
-| F5 | Save world and inventory (`vlox-world.dat`, `vlox-inventory.dat`) |
-| F9 | Load world and inventory from their save files |
-| Escape | Pause / resume |
-| R | Respawn after death |
+The mod JAR is created in `client-mod/build/libs`.
 
-Mined blocks are added to the hotbar inventory. Placing a block consumes one item from the selected stack.
+## Install
 
-## Windows executable and tests
+1. Install Fabric Loader for Minecraft Java **1.21.1**.
+2. Build the desktop app and Fabric mod, or download the matching GitHub Actions artifacts.
+3. In VLOX Desktop, open **Mod Library** and install the mod.
+4. Start the Fabric 1.21.1 profile from the official Minecraft Launcher.
 
-Every push to `main` runs the Windows x64 workflow. It runs `cargo test` before compiling and publishing the release executable. The workflow publishes a direct `.exe` release asset and also uploads an Actions artifact named `VLOX-CLIENT-Windows-x64-EXE`.
-
-## Development roadmap
-
-1. Improve chunk rendering with cached face/mesh generation and reduce per-frame world traversal.
-2. Expand terrain generation with more biomes, caves, water, ores, structures, and deterministic world features.
-3. Add complete inventory screens, crafting, tools, durability, health, hunger, and survival/creative modes.
-4. Implement entity simulation, passive/hostile mobs, combat, and AI.
-5. Add dimensions, redstone, lighting, weather, and time-of-day systems.
-6. Implement resource-pack handling, audio, UI, and save compatibility.
-7. Develop Java Edition networking and protocol compatibility in explicitly tested version stages.
-
-## Project principles
-
-- Reimplement behavior independently; do not copy proprietary game source.
-- Do not redistribute copyrighted game assets. Users must provide assets they are legally entitled to use where required.
-- Keep performance and low-end hardware support in mind.
-- Mark compatibility honestly and test each supported version rather than claiming broad compatibility prematurely.
+Compatibility with other Minecraft versions is not claimed until separately built and tested.
