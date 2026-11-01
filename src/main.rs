@@ -1,7 +1,8 @@
 use macroquad::prelude::*;
-use vlox_client::{cast_block_ray, generate_world, mine_block, place_block, Block, Inventory, PhysicsBody, Vitals, World};
+use vlox_client::{cast_block_ray, generate_chunk, generate_world, mine_block, place_block, Block, Inventory, PhysicsBody, Vitals, World};
 
 const BLOCK_SIZE: f32 = 1.0;
+const WORLD_SEED: u64 = 0x564C4F585F323032;
 const MOUSE_SENSITIVITY: f32 = 0.0025;
 
 struct Player {
@@ -97,9 +98,13 @@ fn block_color(block: Block) -> Color {
     }
 }
 
-fn draw_world(world: &World) {
-    for x in -16..32_i32 {
-        for z in -16..32_i32 {
+fn draw_world(world: &World, center_chunk_x: i32, center_chunk_z: i32) {
+    let min_x = (center_chunk_x - 1) * 16;
+    let max_x = (center_chunk_x + 2) * 16;
+    let min_z = (center_chunk_z - 1) * 16;
+    let max_z = (center_chunk_z + 2) * 16;
+    for x in min_x..max_x {
+        for z in min_z..max_z {
             let top_y = world.surface_height(x, z).unwrap_or(0) as i32;
             for y in 0..=top_y {
                 let block = world.get_block(x, y, z);
@@ -124,7 +129,7 @@ fn draw_world(world: &World) {
 
 #[macroquad::main(window_conf)]
 async fn main() {
-    let mut world = generate_world(0x564C4F585F323032, 1);
+    let mut world = generate_world(WORLD_SEED, 1);
     let mut inventory = Inventory::default();
     let mut vitals = Vitals::default();
     let mut world_status = String::from("World autosave file: vlox-world.dat");
@@ -142,6 +147,18 @@ async fn main() {
         if is_key_pressed(KeyCode::Escape) {
             paused = !paused;
             if paused { show_mouse(true); } else { show_mouse(false); }
+        }
+
+        if !paused && vitals.is_alive() {
+            let player_chunk_x = (player.body.position[0].floor() as i32).div_euclid(16);
+            let player_chunk_z = (player.body.position[2].floor() as i32).div_euclid(16);
+            for chunk_z in player_chunk_z - 1..=player_chunk_z + 1 {
+                for chunk_x in player_chunk_x - 1..=player_chunk_x + 1 {
+                    if world.chunk(chunk_x, chunk_z).is_none() {
+                        world.insert_chunk(chunk_x, chunk_z, generate_chunk(WORLD_SEED, chunk_x, chunk_z));
+                    }
+                }
+            }
         }
 
         if !paused {
@@ -247,7 +264,9 @@ async fn main() {
             ..Default::default()
         };
         set_camera(&camera);
-        draw_world(&world);
+        let render_chunk_x = (player.body.position[0].floor() as i32).div_euclid(16);
+        let render_chunk_z = (player.body.position[2].floor() as i32).div_euclid(16);
+        draw_world(&world, render_chunk_x, render_chunk_z);
         set_default_camera();
 
         frames += 1;
