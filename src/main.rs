@@ -111,6 +111,8 @@ async fn main() {
     let hotbar = [Block::Grass, Block::Dirt, Block::Stone, Block::Sand];
     let mut selected_slot = 0_usize;
     let mut world_status = String::from("World autosave file: vlox-world.dat");
+    let mut mining_target: Option<[i32; 3]> = None;
+    let mut mining_progress = 0.0_f32;
     let spawn_y = world.surface_height(0, 6).unwrap_or(24) as f32 + 1.0;
     let mut player = Player::new(spawn_y);
     let mut paused = false;
@@ -153,10 +155,37 @@ async fn main() {
             let look = player.forward();
             let origin = [player.position.x, player.position.y, player.position.z];
             let direction = [look.x, look.y, look.z];
-            if is_mouse_button_pressed(MouseButton::Left) {
+            if is_mouse_button_down(MouseButton::Left) {
                 if let Some(hit) = cast_block_ray(&world, origin, direction, 5.0) {
-                    let _dropped_block = mine_block(&mut world, hit);
+                    let block = world.get_block(
+                        hit.block_position[0],
+                        hit.block_position[1],
+                        hit.block_position[2],
+                    );
+                    if mining_target != Some(hit.block_position) {
+                        mining_target = Some(hit.block_position);
+                        mining_progress = 0.0;
+                    }
+                    let required_time = match block {
+                        Block::Grass => 0.75,
+                        Block::Dirt => 0.75,
+                        Block::Sand => 0.40,
+                        Block::Stone => 7.50,
+                        Block::Air => 0.0,
+                    };
+                    mining_progress += dt;
+                    if required_time <= 0.0 || mining_progress >= required_time {
+                        let _dropped_block = mine_block(&mut world, hit);
+                        mining_target = None;
+                        mining_progress = 0.0;
+                    }
+                } else {
+                    mining_target = None;
+                    mining_progress = 0.0;
                 }
+            } else {
+                mining_target = None;
+                mining_progress = 0.0;
             }
             if is_key_pressed(KeyCode::F) {
                 if let Some(hit) = cast_block_ray(&world, origin, direction, 5.0) {
@@ -193,6 +222,21 @@ async fn main() {
         draw_text(&format!("FPS  {}", shown_fps), 32.0, 73.0, 18.0, SKYBLUE);
         draw_text("WASD move | SPACE jump | RMB look | LMB mine | F place | F5 save | F9 load", 32.0, 98.0, 15.0, LIGHTGRAY);
         draw_text(&world_status, 32.0, 130.0, 16.0, LIGHTGRAY);
+
+        if mining_target.is_some() {
+            let block = mining_target.map(|p| world.get_block(p[0], p[1], p[2])).unwrap_or(Block::Air);
+            let required = match block {
+                Block::Grass | Block::Dirt => 0.75,
+                Block::Sand => 0.40,
+                Block::Stone => 7.50,
+                Block::Air => 1.0,
+            };
+            let progress = (mining_progress / required).clamp(0.0, 1.0);
+            let bar_x = screen_width() * 0.5 - 90.0;
+            let bar_y = screen_height() - 92.0;
+            draw_rectangle(bar_x, bar_y, 180.0, 8.0, Color::new(0.02, 0.03, 0.04, 0.85));
+            draw_rectangle(bar_x, bar_y, 180.0 * progress, 8.0, Color::new(0.92, 0.82, 0.36, 1.0));
+        }
 
         let hotbar_width = 4.0 * 54.0 + 3.0 * 8.0;
         let hotbar_x = (screen_width() - hotbar_width) * 0.5;
