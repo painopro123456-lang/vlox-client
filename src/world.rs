@@ -2,6 +2,7 @@
 //! networking can share the same world representation.
 
 use std::collections::HashMap;
+use std::io::{self, Read, Write};
 
 pub const CHUNK_SIZE: usize = 16;
 pub const WORLD_HEIGHT: usize = 64;
@@ -87,6 +88,66 @@ impl World {
         world
     }
 
+    /// Save all loaded chunks in a compact, versioned binary format.
+    pub fn save<W: Write>(&self, mut writer: W) -> io::Result<()> {
+        writer.write_all(b"VLOXWLD1")?;
+        let mut entries: Vec<_> = self.chunks.iter().collect();
+        entries.sort_by_key(|(position, _)| **position);
+        writer.write_all(&(entries.len() as u32).to_le_bytes())?;
+        for (&(chunk_x, chunk_z), chunk) in entries {
+            writer.write_all(&chunk_x.to_le_bytes())?;
+            writer.write_all(&chunk_z.to_le_bytes())?;
+            for block in &chunk.blocks {
+                writer.write_all(&[*block as u8])?;
+            }
+        }
+        Ok(())
+    }
+
+    /// Load a saved world, rejecting unknown formats, block IDs, and unreasonable sizes.
+    pub fn load<R: Read>(mut reader: R) -> io::Result<Self> {
+        let mut magic = [0_u8; 8];
+        reader.read_exact(&mut magic)?;
+        if &magic != b"VLOXWLD1" {
+            return Err(io::Error::new(io::ErrorKind::InvalidData, "invalid VLOX world header"));
+        }
+
+        let mut count_bytes = [0_u8; 4];
+        reader.read_exact(&mut count_bytes)?;
+        let count = u32::from_le_bytes(count_bytes) as usize;
+        if count > 16_384 {
+            return Err(io::Error::new(io::ErrorKind::InvalidData, "world contains too many chunks"));
+        }
+
+        let mut world = Self::default();
+        for _ in 0..count {
+            let mut coordinate = [0_u8; 4];
+            reader.read_exact(&mut coordinate)?;
+            let chunk_x = i32::from_le_bytes(coordinate);
+            reader.read_exact(&mut coordinate)?;
+            let chunk_z = i32::from_le_bytes(coordinate);
+            if world.chunks.contains_key(&(chunk_x, chunk_z)) {
+                return Err(io::Error::new(io::ErrorKind::InvalidData, "duplicate chunk coordinate"));
+            }
+
+            let mut chunk = Chunk::default();
+            for block in &mut chunk.blocks {
+                let mut id = [0_u8; 1];
+                reader.read_exact(&mut id)?;
+                *block = match id[0] {
+                    0 => Block::Air,
+                    1 => Block::Grass,
+                    2 => Block::Dirt,
+                    3 => Block::Stone,
+                    4 => Block::Sand,
+                    _ => return Err(io::Error::new(io::ErrorKind::InvalidData, "unknown block ID")),
+                };
+            }
+            world.chunks.insert((chunk_x, chunk_z), chunk);
+        }
+        Ok(world)
+    }
+
     pub fn insert_chunk(&mut self, chunk_x: i32, chunk_z: i32, chunk: Chunk) {
         self.chunks.insert((chunk_x, chunk_z), chunk);
     }
@@ -154,6 +215,23 @@ mod tests {
         assert!(world.set_block(16, 5, -1, Block::Stone));
         assert_eq!(world.get_block(16, 5, -1), Block::Stone);
         assert_eq!(world.get_block(15, 5, -1), Block::Air);
+    }
+
+    #[test]
+    fn save_and_load_preserve_world_blocks_and_chunk_coordinates() {
+        let mut world = World::new_flat_test_world();
+        world.set_block(-17, 12, 31, Block::Sand);
+        let mut bytes = Vec::new();
+        world.save(&mut bytes).unwrap();
+        let loaded = World::load(bytes.as_slice()).unwrap();
+        assert_eq!(loaded.get_block(0, 3, 0), Block::Grass);
+        assert_eq!(loaded.get_block(-17, 12, 31), Block::Sand);
+        assert_eq!(loaded.get_block(16, 12, 31), Block::Air);
+    }
+
+    #[test]
+    fn load_rejects_invalid_world_header() {
+        assert_eq!(World::load(&b"NOTAVLOX"[..]).unwrap_err().kind(), std::io::ErrorKind::InvalidData);
     }
 
     #[test]
