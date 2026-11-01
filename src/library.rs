@@ -290,7 +290,7 @@ fn import_curseforge_archive(archive_path: &Path) -> Result<String, String> {
         for item in files {
             let project = item.get("projectID").and_then(|v| v.as_u64()).ok_or("Invalid CurseForge project ID")?;
             let file_id = item.get("fileID").and_then(|v| v.as_u64()).ok_or("Invalid CurseForge file ID")?;
-            let url = format!("{CURSEFORGE_PROXY_BASE}/v1/mods/{project}/files/{file_id}");
+            let url = format!("https://api.curseforge.com/v1/mods/{project}/files/{file_id}");
             let data: serde_json::Value = curseforge_get(&client, url)?.send()
                 .map_err(|e| format!("CurseForge API request failed: {e}"))?.error_for_status()
                 .map_err(|e| format!("CurseForge API rejected the key or file request: {e}"))?.json().map_err(|e| e.to_string())?;
