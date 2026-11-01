@@ -87,6 +87,10 @@ impl World {
         world
     }
 
+    pub fn insert_chunk(&mut self, chunk_x: i32, chunk_z: i32, chunk: Chunk) {
+        self.chunks.insert((chunk_x, chunk_z), chunk);
+    }
+
     pub fn chunk(&self, chunk_x: i32, chunk_z: i32) -> Option<&Chunk> {
         self.chunks.get(&(chunk_x, chunk_z))
     }
