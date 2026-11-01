@@ -231,7 +231,7 @@ mod tests {
 
     #[test]
     fn load_rejects_invalid_world_header() {
-        assert_eq!(World::load(&b"NOTAVLOX"[..]).unwrap_err().kind(), std::io::ErrorKind::InvalidData);
+        assert!(matches!(World::load(&b"NOTAVLOX"[..]), Err(error) if error.kind() == std::io::ErrorKind::InvalidData));
     }
 
     #[test]
