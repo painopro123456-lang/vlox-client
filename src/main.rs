@@ -45,9 +45,9 @@ impl Player {
         }
 
         if is_mouse_button_down(MouseButton::Right) {
-            let (dx, dy) = mouse_delta_position().into();
-            self.yaw += dx * MOUSE_SENSITIVITY * 100.0;
-            self.pitch = (self.pitch - dy * MOUSE_SENSITIVITY * 100.0).clamp(-1.45, 1.45);
+            let delta = mouse_delta_position();
+            self.yaw += delta.x * MOUSE_SENSITIVITY * 100.0;
+            self.pitch = (self.pitch - delta.y * MOUSE_SENSITIVITY * 100.0).clamp(-1.45, 1.45);
         }
     }
 }
@@ -80,8 +80,8 @@ fn draw_world() {
             draw_cube(
                 vec3(x as f32 * BLOCK_SIZE, -0.5, z as f32 * BLOCK_SIZE),
                 vec3(BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE),
-                Some(tint),
                 None,
+                Some(tint),
             );
         }
     }
@@ -94,7 +94,7 @@ fn draw_world() {
         (-3.0, 0.0, -2.0, Color::new(0.55, 0.38, 0.22, 1.0)),
         (-3.0, 1.0, -2.0, Color::new(0.55, 0.38, 0.22, 1.0)),
     ] {
-        draw_cube(vec3(x, y, z), vec3(1.0, 1.0, 1.0), Some(color), None);
+        draw_cube(vec3(x, y, z), vec3(1.0, 1.0, 1.0), None, Some(color));
         draw_cube_wires(vec3(x, y, z), vec3(1.0, 1.0, 1.0), BLACK);
     }
 }
