@@ -1,4 +1,7 @@
+mod auth;
+
 use macroquad::prelude::*;
+use std::sync::mpsc::{self, TryRecvError};
 use vlox_client::{cast_block_ray, generate_chunk, generate_world, mine_block, place_block, Block, Inventory, PhysicsBody, Vitals, World, WorldClock};
 
 const BLOCK_SIZE: f32 = 1.0;
@@ -142,8 +145,48 @@ async fn main() {
     let mut frames = 0_u32;
     let mut fps_timer = 0.0_f32;
     let mut shown_fps = 0_u32;
+    let (auth_sender, auth_receiver) = mpsc::channel();
+    let mut auth_started = false;
+    let mut auth_status = String::from("Not signed in");
+    let mut auth_code: Option<String> = None;
+    let mut auth_name: Option<String> = None;
 
     loop {
+        loop {
+            match auth_receiver.try_recv() {
+                Ok(auth::AuthEvent::DeviceCode { user_code, verification_uri }) => {
+                    auth_code = Some(user_code);
+                    auth_status = format!("Open {verification_uri} and enter the code");
+                }
+                Ok(auth::AuthEvent::SignedIn { name, uuid: _ }) => {
+                    auth_name = Some(name.clone());
+                    auth_status = format!("Signed in as {name}");
+                    auth_code = None;
+                }
+                Ok(auth::AuthEvent::Failed(error)) => {
+                    auth_status = error;
+                    auth_code = None;
+                    auth_started = false;
+                }
+                Err(TryRecvError::Empty) => break,
+                Err(TryRecvError::Disconnected) => {
+                    auth_status = String::from("Sign-in worker stopped");
+                    auth_started = false;
+                    break;
+                }
+            }
+        }
+        let login_button = Rect::new(screen_width() - 252.0, 20.0, 232.0, 42.0);
+        let (mouse_x, mouse_y) = mouse_position();
+        let login_button_clicked = is_mouse_button_pressed(MouseButton::Left)
+            && login_button.contains(vec2(mouse_x, mouse_y));
+        if login_button_clicked && auth_name.is_none() && !auth_started {
+            auth_started = true;
+            auth_status = String::from("Connecting to Microsoft...");
+            auth_code = None;
+            auth::start_sign_in(auth_sender.clone());
+        }
+
         let dt = get_frame_time().min(0.05);
         if is_key_pressed(KeyCode::Escape) {
             paused = !paused;
@@ -213,7 +256,7 @@ async fn main() {
             let look = player.forward();
             let origin = [player.position.x, player.position.y, player.position.z];
             let direction = [look.x, look.y, look.z];
-            if is_mouse_button_down(MouseButton::Left) {
+            if is_mouse_button_down(MouseButton::Left) && !login_button_clicked {
                 if let Some(hit) = cast_block_ray(&world, origin, direction, 5.0) {
                     let block = world.get_block(
                         hit.block_position[0],
@@ -306,6 +349,28 @@ async fn main() {
         draw_text("WASD move | CTRL sprint | SPACE jump | RMB look | LMB mine | F place | 1-9 hotbar", 32.0, 98.0, 13.0, LIGHTGRAY);
         draw_text("F5 save | F9 load (world + inventory)", 32.0, 130.0, 15.0, LIGHTGRAY);
         draw_text(&world_status, 32.0, 154.0, 16.0, LIGHTGRAY);
+
+        draw_rectangle(login_button.x, login_button.y, login_button.w, login_button.h,
+            Color::new(0.08, 0.18, 0.30, 0.94));
+        draw_rectangle_lines(login_button.x, login_button.y, login_button.w, login_button.h, 1.5, SKYBLUE);
+        let login_label = if let Some(name) = &auth_name {
+            format!("Microsoft: {name}")
+        } else if auth_started {
+            String::from("Microsoft sign-in...")
+        } else {
+            String::from("Sign in with Microsoft")
+        };
+        draw_text(&login_label, login_button.x + 12.0, login_button.y + 27.0, 17.0, WHITE);
+        if auth_started || auth_name.is_some() {
+            let panel_y = 70.0;
+            draw_rectangle(login_button.x - 130.0, panel_y, 362.0, 92.0,
+                Color::new(0.025, 0.04, 0.065, 0.94));
+            draw_text(&auth_status, login_button.x - 118.0, panel_y + 24.0, 13.0, LIGHTGRAY);
+            if let Some(code) = &auth_code {
+                draw_text(&format!("Code: {code}"), login_button.x - 118.0, panel_y + 53.0, 23.0, YELLOW);
+                draw_text("Complete sign-in in your browser", login_button.x - 118.0, panel_y + 76.0, 12.0, WHITE);
+            }
+        }
 
         if mining_target.is_some() {
             let block = mining_target.map(|p| world.get_block(p[0], p[1], p[2])).unwrap_or(Block::Air);
