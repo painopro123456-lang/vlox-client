@@ -31,7 +31,7 @@ pub enum AuthEvent {
 }
 
 pub fn saved_account_name() -> Option<String> {
-    load_account().ok().flatten().map(|account| account.name)
+    load_session().ok().flatten().map(|(_, name)| name)
 }
 
 pub fn start_sign_in(sender: Sender<AuthEvent>) {
@@ -77,12 +77,14 @@ pub fn sign_out() -> Result<(), String> {
 pub fn start_launch(sender: Sender<AuthEvent>) {
     thread::spawn(move || {
         let result = run_async(async {
-            let mut account = load_account()?
+            let (refresh_token, _) = load_session()?
                 .ok_or_else(|| "Sign in with Microsoft before launching Minecraft.".to_owned())?;
             let auth = Authenticator::with_client_id(MICROSOFT_CLIENT_ID)
                 .map_err(|error| format!("Could not initialize account refresh: {error}"))?;
-            account = auth.refresh(&account).await
+            let session = auth.microsoft().refresh(&refresh_token).await
                 .map_err(|error| format!("Your Microsoft session needs attention. Sign in again: {error}"))?;
+            let account = auth.complete(session).await
+                .map_err(|error| format!("Could not refresh your Minecraft profile: {error}"))?;
             save_account(&account)?;
 
             let minecraft_dir = minecraft_directory()?;
@@ -181,15 +183,22 @@ fn install_client_mods(minecraft_dir: &PathBuf) -> Result<(), String> {
     Ok(())
 }
 
-fn load_account() -> Result<Option<Account>, String> {
+fn load_session() -> Result<Option<(String, String)>, String> {
     #[cfg(windows)]
     {
         let entry = keyring::Entry::new(SERVICE_NAME, ACCOUNT_KEY)
             .map_err(|error| format!("Could not access Windows Credential Manager: {error}"))?;
         match entry.get_password() {
-            Ok(serialized) => serde_json::from_str(&serialized)
-                .map(Some)
-                .map_err(|error| format!("Saved account data is invalid: {error}")),
+            Ok(serialized) => {
+                let value: serde_json::Value = serde_json::from_str(&serialized)
+                    .map_err(|error| format!("Saved account data is invalid: {error}"))?;
+                let token = value.get("refresh_token").and_then(serde_json::Value::as_str)
+                    .filter(|token| !token.is_empty())
+                    .ok_or_else(|| "Saved Microsoft session has no refresh token. Sign in again.".to_owned())?;
+                let name = value.get("name").and_then(serde_json::Value::as_str)
+                    .unwrap_or("Microsoft account");
+                Ok(Some((token.to_owned(), name.to_owned())))
+            }
             Err(keyring::Error::NoEntry) => Ok(None),
             Err(error) => Err(format!("Could not read the saved Microsoft account: {error}")),
         }
@@ -201,6 +210,26 @@ fn load_account() -> Result<Option<Account>, String> {
 }
 
 fn save_account(account: &Account) -> Result<(), String> {
+    #[cfg(windows)]
+    {
+        let refresh_token = account.refresh_token.as_deref()
+            .filter(|token| !token.is_empty())
+            .ok_or_else(|| "Microsoft did not provide a refresh token; sign-in cannot be saved.".to_owned())?;
+        let serialized = serde_json::json!({
+            "refresh_token": refresh_token,
+            "name": account.name
+        }).to_string();
+        let entry = keyring::Entry::new(SERVICE_NAME, ACCOUNT_KEY)
+            .map_err(|error| format!("Could not access Windows Credential Manager: {error}"))?;
+        entry.set_password(&serialized)
+            .map_err(|error| format!("Could not securely save the Microsoft session: {error}"))
+    }
+    #[cfg(not(windows))]
+    {
+        let _ = account;
+        Err("Secure account storage is currently supported on Windows builds.".to_owned())
+    }
+}
     #[cfg(windows)]
     {
         let serialized = serde_json::to_string(account)
