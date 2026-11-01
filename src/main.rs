@@ -27,7 +27,6 @@ struct VloxApp {
     library_status: String,
     modrinth_query: String,
     modrinth_results: Vec<library::ModrinthPack>,
-    curseforge_api_key: String,
     curseforge_query: String,
     curseforge_results: Vec<library::CurseForgePack>,
 }
@@ -54,7 +53,6 @@ impl Default for VloxApp {
             library_status: String::new(),
             modrinth_query: String::new(),
             modrinth_results: Vec::new(),
-            curseforge_api_key: String::new(),
             curseforge_query: String::new(),
             curseforge_results: Vec::new(),
         }
@@ -334,7 +332,7 @@ impl eframe::App for VloxApp {
                             self.instances = library::list_instances().unwrap_or_default();
                         }
                         if ui.button("＋ Import CurseForge ZIP").clicked() {
-                            self.library_status = match library::import_curseforge_modpack(&self.curseforge_api_key) {
+                            self.library_status = match library::import_curseforge_modpack() {
                                 Ok(message) => message,
                                 Err(error) => error,
                             };
@@ -380,12 +378,11 @@ impl eframe::App for VloxApp {
                     ui.add_space(10.0);
                     Self::card(ui, |ui| {
                         ui.label(RichText::new("CURSEFORGE DISCOVERY").strong().color(WHITE));
-                        ui.label(RichText::new("Search CurseForge modpacks for Minecraft 26.2 / Fabric. CurseForge requires an API key.").size(11.0).color(MUTED));
-                        ui.add_sized([420.0, 30.0], egui::TextEdit::singleline(&mut self.curseforge_api_key).password(true).hint_text("CurseForge API key"));
+                        ui.label(RichText::new("Search and install CurseForge modpacks for Minecraft 26.2 / Fabric. VLOX connects securely through its API service.").size(11.0).color(MUTED));
                         ui.horizontal(|ui| {
                             ui.add_sized([360.0, 30.0], egui::TextEdit::singleline(&mut self.curseforge_query).hint_text("Search CurseForge modpacks"));
                             if ui.button("Search").clicked() {
-                                match library::search_curseforge_modpacks(&self.curseforge_query, &self.curseforge_api_key) {
+                                match library::search_curseforge_modpacks(&self.curseforge_query) {
                                     Ok(results) => {
                                         self.curseforge_results = results;
                                         self.library_status = format!("Found {} CurseForge modpacks.", self.curseforge_results.len());
@@ -403,7 +400,7 @@ impl eframe::App for VloxApp {
                                 });
                                 ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                                     if ui.button("Install").clicked() {
-                                        self.library_status = match library::install_curseforge_project(pack.id, &self.curseforge_api_key) {
+                                        self.library_status = match library::install_curseforge_project(pack.id) {
                                             Ok(message) => message,
                                             Err(error) => error,
                                         };
