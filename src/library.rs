@@ -115,7 +115,11 @@ pub fn import_modpack() -> Result<String, String> {
         .add_filter("Modrinth modpack", &["mrpack"])
         .pick_file()
         .ok_or_else(|| "No modpack selected.".to_owned())?;
-    let file = fs::File::open(&archive_path).map_err(|e| format!("Could not open modpack: {e}"))?;
+    install_mrpack_file(&archive_path)
+}
+
+fn install_mrpack_file(archive_path: &Path) -> Result<String, String> {
+    let file = fs::File::open(archive_path).map_err(|e| format!("Could not open modpack: {e}"))?;
     let mut archive = zip::ZipArchive::new(file).map_err(|e| format!("Invalid .mrpack archive: {e}"))?;
     let mut index_text = String::new();
     archive.by_name("modrinth.index.json")
@@ -188,4 +192,114 @@ pub fn import_modpack() -> Result<String, String> {
         return Err(error);
     }
     Ok(format!("Installed '{safe_name}' for Minecraft 26.2. Select it and launch from VLOX."))
+}
+
+
+#[derive(Clone, Debug)]
+pub struct ModrinthPack {
+    pub title: String,
+    pub slug: String,
+    pub description: String,
+    pub downloads: u64,
+}
+
+pub fn search_modrinth_modpacks(query: &str) -> Result<Vec<ModrinthPack>, String> {
+    let client = reqwest::blocking::Client::builder().user_agent("VLOX-CLIENT/0.4").build().map_err(|e| e.to_string())?;
+    let response = client.get("https://api.modrinth.com/v2/search")
+        .query(&[("query", query), ("limit", "20"), ("facets", "[[\"project_type:modpack\"],[\"versions:26.2\"],[\"categories:fabric\"]]")])
+        .send().map_err(|e| format!("Modrinth search failed: {e}"))?
+        .error_for_status().map_err(|e| format!("Modrinth search failed: {e}"))?;
+    let value: serde_json::Value = response.json().map_err(|e| e.to_string())?;
+    let hits = value.get("hits").and_then(|v| v.as_array()).ok_or("Modrinth returned an invalid search response")?;
+    Ok(hits.iter().filter_map(|hit| {
+        Some(ModrinthPack {
+            title: hit.get("title")?.as_str()?.to_owned(),
+            slug: hit.get("slug")?.as_str()?.to_owned(),
+            description: hit.get("description").and_then(|v| v.as_str()).unwrap_or("").to_owned(),
+            downloads: hit.get("downloads").and_then(|v| v.as_u64()).unwrap_or(0),
+        })
+    }).collect())
+}
+
+pub fn install_modrinth_pack(slug: &str) -> Result<String, String> {
+    if slug.is_empty() || !slug.chars().all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_') {
+        return Err("Invalid Modrinth project slug.".to_owned());
+    }
+    let client = reqwest::blocking::Client::builder().user_agent("VLOX-CLIENT/0.4").build().map_err(|e| e.to_string())?;
+    let versions_url = format!("https://api.modrinth.com/v2/project/{slug}/version");
+    let response = client.get(versions_url).query(&[("game_versions", "[\"26.2\"]"), ("loaders", "[\"fabric\"]")])
+        .send().map_err(|e| format!("Could not find Modrinth pack versions: {e}"))?
+        .error_for_status().map_err(|e| format!("Could not find Modrinth pack versions: {e}"))?;
+    let versions: serde_json::Value = response.json().map_err(|e| e.to_string())?;
+    let version = versions.as_array().and_then(|a| a.first()).ok_or("No Fabric 26.2 version is available for this Modrinth pack.")?;
+    let files = version.get("files").and_then(|v| v.as_array()).ok_or("Modrinth version has no files")?;
+    let file = files.iter().find(|f| f.get("primary").and_then(|v| v.as_bool()) == Some(true)).or_else(|| files.first()).ok_or("Modrinth version has no downloadable file")?;
+    let url = file.get("url").and_then(|v| v.as_str()).ok_or("Modrinth file has no download URL")?;
+    let filename = file.get("filename").and_then(|v| v.as_str()).unwrap_or("download.mrpack");
+    if !filename.to_lowercase().ends_with(".mrpack") { return Err("Modrinth project version did not provide an .mrpack file.".to_owned()); }
+    let bytes = client.get(url).send().map_err(|e| e.to_string())?.error_for_status().map_err(|e| e.to_string())?.bytes().map_err(|e| e.to_string())?;
+    let temp = appdata()?.join(".vlox").join(format!("download-{slug}.mrpack"));
+    if let Some(parent) = temp.parent() { fs::create_dir_all(parent).map_err(|e| e.to_string())?; }
+    fs::write(&temp, &bytes).map_err(|e| e.to_string())?;
+    let result = install_mrpack_file(&temp);
+    let _ = fs::remove_file(&temp);
+    result
+}
+
+pub fn import_curseforge_modpack(api_key: &str) -> Result<String, String> {
+    if api_key.trim().is_empty() { return Err("Enter your CurseForge API key in Modpack Manager first.".to_owned()); }
+    let archive_path = rfd::FileDialog::new().add_filter("CurseForge modpack export", &["zip"]).pick_file()
+        .ok_or_else(|| "No CurseForge modpack selected.".to_owned())?;
+    let file = fs::File::open(&archive_path).map_err(|e| e.to_string())?;
+    let mut archive = zip::ZipArchive::new(file).map_err(|e| format!("Invalid CurseForge archive: {e}"))?;
+    let mut manifest_text = String::new();
+    archive.by_name("manifest.json").map_err(|_| "CurseForge export is missing manifest.json.".to_owned())?
+        .read_to_string(&mut manifest_text).map_err(|e| e.to_string())?;
+    let manifest: serde_json::Value = serde_json::from_str(&manifest_text).map_err(|e| e.to_string())?;
+    let mc = manifest.pointer("/minecraft/version").and_then(|v| v.as_str()).unwrap_or("");
+    if mc != "26.2" { return Err(format!("This VLOX build supports Minecraft 26.2 modpacks. This pack targets {mc}.")); }
+    let loaders = manifest.pointer("/minecraft/modLoaders").and_then(|v| v.as_array()).ok_or("CurseForge manifest has no mod loader")?;
+    if !loaders.iter().any(|v| v.get("id").and_then(|x| x.as_str()).is_some_and(|id| id.starts_with("fabric-"))) {
+        return Err("This CurseForge pack is not a Fabric modpack.".to_owned());
+    }
+    let raw_name = manifest.get("name").and_then(|v| v.as_str()).or_else(|| archive_path.file_stem().and_then(|v| v.to_str())).unwrap_or("CurseForge Pack");
+    let safe_name: String = raw_name.chars().map(|c| if c.is_ascii_alphanumeric() || c == '-' || c == '_' || c == ' ' { c } else { '_' }).collect();
+    let target = instance_path(&safe_name)?;
+    if target.exists() { return Err(format!("A modpack named '{safe_name}' is already installed.")); }
+    fs::create_dir_all(&target).map_err(|e| e.to_string())?;
+    let result = (|| -> Result<(), String> {
+        let client = reqwest::blocking::Client::builder().user_agent("VLOX-CLIENT/0.4").build().map_err(|e| e.to_string())?;
+        let files = manifest.get("files").and_then(|v| v.as_array()).ok_or("CurseForge file list is missing")?;
+        for item in files {
+            let project = item.get("projectID").and_then(|v| v.as_u64()).ok_or("Invalid CurseForge project ID")?;
+            let file_id = item.get("fileID").and_then(|v| v.as_u64()).ok_or("Invalid CurseForge file ID")?;
+            let url = format!("https://api.curseforge.com/v1/mods/{project}/files/{file_id}");
+            let data: serde_json::Value = client.get(url).header("x-api-key", api_key).send()
+                .map_err(|e| format!("CurseForge API request failed: {e}"))?.error_for_status()
+                .map_err(|e| format!("CurseForge API rejected the key or file request: {e}"))?.json().map_err(|e| e.to_string())?;
+            let download_url = data.pointer("/data/downloadUrl").and_then(|v| v.as_str())
+                .ok_or("CurseForge did not provide a download URL for one of the mod files")?;
+            let filename = data.pointer("/data/fileName").and_then(|v| v.as_str()).ok_or("CurseForge file has no filename")?;
+            let bytes = client.get(download_url).send().map_err(|e| e.to_string())?.error_for_status().map_err(|e| e.to_string())?.bytes().map_err(|e| e.to_string())?;
+            let out = target.join("mods").join(safe_relative(filename)?);
+            if let Some(parent) = out.parent() { fs::create_dir_all(parent).map_err(|e| e.to_string())?; }
+            fs::write(out, &bytes).map_err(|e| e.to_string())?;
+        }
+        for i in 0..archive.len() {
+            let mut entry = archive.by_index(i).map_err(|e| e.to_string())?;
+            let name = entry.name().to_owned();
+            let Some(rest) = name.strip_prefix("overrides/") else { continue };
+            if rest.is_empty() { continue; }
+            let out = target.join(safe_relative(rest)?);
+            if entry.is_dir() { fs::create_dir_all(out).map_err(|e| e.to_string())?; }
+            else {
+                if let Some(parent) = out.parent() { fs::create_dir_all(parent).map_err(|e| e.to_string())?; }
+                let mut output = fs::File::create(out).map_err(|e| e.to_string())?;
+                std::io::copy(&mut entry, &mut output).map_err(|e| e.to_string())?;
+            }
+        }
+        Ok(())
+    })();
+    if let Err(error) = result { let _ = fs::remove_dir_all(&target); return Err(error); }
+    Ok(format!("Installed CurseForge pack '{safe_name}'. Select it and launch from VLOX."))
 }
