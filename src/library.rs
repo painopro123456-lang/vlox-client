@@ -4,7 +4,19 @@ use std::{
     path::{Component, Path, PathBuf},
 };
 
-const CURSEFORGE_PROXY_BASE: &str = "https://vlox-curseforge-proxy.painopro123456.workers.dev";
+include!(concat!(env!("OUT_DIR"), "/curseforge_key.rs"));
+
+fn curseforge_api_key() -> Result<String, String> {
+    if ENCRYPTED_CURSEFORGE_KEY.is_empty() {
+        return Err("CurseForge is not configured in this build. Add the CURSEFORGE_API_KEY repository secret and rebuild.".to_owned());
+    }
+    Ok(ENCRYPTED_CURSEFORGE_KEY.iter().map(|byte| (byte ^ 0xA7) as char).collect())
+}
+
+fn curseforge_get(client: &reqwest::blocking::Client, url: String) -> Result<reqwest::blocking::RequestBuilder, String> {
+    let key = curseforge_api_key()?;
+    Ok(client.get(url).header("x-api-key", key))
+}
 
 fn appdata() -> Result<PathBuf, String> {
     let root = std::env::var_os("APPDATA")
@@ -279,7 +291,7 @@ fn import_curseforge_archive(archive_path: &Path) -> Result<String, String> {
             let project = item.get("projectID").and_then(|v| v.as_u64()).ok_or("Invalid CurseForge project ID")?;
             let file_id = item.get("fileID").and_then(|v| v.as_u64()).ok_or("Invalid CurseForge file ID")?;
             let url = format!("{CURSEFORGE_PROXY_BASE}/v1/mods/{project}/files/{file_id}");
-            let data: serde_json::Value = client.get(url).send()
+            let data: serde_json::Value = curseforge_get(&client, url)?.send()
                 .map_err(|e| format!("CurseForge API request failed: {e}"))?.error_for_status()
                 .map_err(|e| format!("CurseForge API rejected the key or file request: {e}"))?.json().map_err(|e| e.to_string())?;
             let download_url = data.pointer("/data/downloadUrl").and_then(|v| v.as_str())
@@ -320,7 +332,7 @@ pub struct CurseForgePack {
 
 pub fn search_curseforge_modpacks(query: &str) -> Result<Vec<CurseForgePack>, String> {
     let client = reqwest::blocking::Client::builder().user_agent("VLOX-CLIENT/0.4").build().map_err(|e| e.to_string())?;
-    let response = client.get(format!("{CURSEFORGE_PROXY_BASE}/v1/mods/search"))
+    let response = curseforge_get(&client, "https://api.curseforge.com/v1/mods/search".to_owned())?
         .query(&[
             ("gameId", "432"), ("classId", "4471"), ("searchFilter", query),
             ("pageSize", "20"), ("sortField", "6"), ("sortOrder", "desc"),
@@ -340,7 +352,7 @@ pub fn search_curseforge_modpacks(query: &str) -> Result<Vec<CurseForgePack>, St
 
 pub fn install_curseforge_project(project_id: u64) -> Result<String, String> {
     let client = reqwest::blocking::Client::builder().user_agent("VLOX-CLIENT/0.4").build().map_err(|e| e.to_string())?;
-    let response = client.get(format!("{CURSEFORGE_PROXY_BASE}/v1/mods/{project_id}/files"))
+    let response = curseforge_get(&client, format!("https://api.curseforge.com/v1/mods/{project_id}/files"))?
         .query(&[("gameVersion", "26.2"), ("modLoaderType", "4"), ("pageSize", "20"), ("index", "0")])
         .send().map_err(|e| e.to_string())?.error_for_status().map_err(|e| format!("CurseForge file lookup failed: {e}"))?;
     let value: serde_json::Value = response.json().map_err(|e| e.to_string())?;
