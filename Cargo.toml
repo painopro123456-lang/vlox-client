@@ -1,12 +1,9 @@
 [package]
 name = "vlox-client"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
-description = "VLOX CLIENT - an independent Rust voxel game client prototype"
+description = "VLOX CLIENT desktop companion"
 license = "MIT"
 
 [dependencies]
-macroquad = "0.4.14"
-reqwest = { version = "0.12", default-features = false, features = ["blocking", "json", "rustls-tls"] }
-serde_json = "1.0"
-webbrowser = "1.0"
+eframe = { version = "0.29", default-features = false, features = ["default_fonts", "glow", "wayland", "x11"] }
