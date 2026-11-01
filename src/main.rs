@@ -143,20 +143,27 @@ async fn main() {
             if is_key_pressed(KeyCode::Key8) { inventory.select(7); }
             if is_key_pressed(KeyCode::Key9) { inventory.select(8); }
             if is_key_pressed(KeyCode::F5) {
-                world_status = match std::fs::File::create("vlox-world.dat")
-                    .and_then(|file| world.save(file)) {
-                    Ok(()) => String::from("World saved"),
-                    Err(error) => format!("Save failed: {error}"),
+                let world_result = std::fs::File::create("vlox-world.dat")
+                    .and_then(|file| world.save(file));
+                let inventory_result = std::fs::File::create("vlox-inventory.dat")
+                    .and_then(|file| inventory.save(file));
+                world_status = match (world_result, inventory_result) {
+                    (Ok(()), Ok(())) => String::from("World and inventory saved"),
+                    (Err(error), _) | (_, Err(error)) => format!("Save failed: {error}"),
                 };
             }
             if is_key_pressed(KeyCode::F9) {
-                world_status = match std::fs::File::open("vlox-world.dat")
-                    .and_then(World::load) {
-                    Ok(loaded) => {
-                        world = loaded;
-                        String::from("World loaded")
+                let world_result = std::fs::File::open("vlox-world.dat").and_then(World::load);
+                let inventory_result = std::fs::File::open("vlox-inventory.dat").and_then(Inventory::load);
+                world_status = match (world_result, inventory_result) {
+                    (Ok(loaded_world), Ok(loaded_inventory)) => {
+                        world = loaded_world;
+                        inventory = loaded_inventory;
+                        mining_target = None;
+                        mining_progress = 0.0;
+                        String::from("World and inventory loaded")
                     }
-                    Err(error) => format!("Load failed: {error}"),
+                    (Err(error), _) | (_, Err(error)) => format!("Load failed: {error}"),
                 };
             }
 
@@ -237,7 +244,7 @@ async fn main() {
         draw_text("VLOX CLIENT", 32.0, 48.0, 25.0, WHITE);
         draw_text(&format!("FPS  {}", shown_fps), 32.0, 73.0, 18.0, SKYBLUE);
         draw_text("WASD move | CTRL sprint | SPACE jump | RMB look | LMB mine | F place | 1-9 hotbar", 32.0, 98.0, 13.0, LIGHTGRAY);
-        draw_text("F5 save | F9 load", 32.0, 130.0, 15.0, LIGHTGRAY);
+        draw_text("F5 save | F9 load (world + inventory)", 32.0, 130.0, 15.0, LIGHTGRAY);
         draw_text(&world_status, 32.0, 154.0, 16.0, LIGHTGRAY);
 
         if mining_target.is_some() {
