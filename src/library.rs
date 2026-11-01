@@ -4,6 +4,8 @@ use std::{
     path::{Component, Path, PathBuf},
 };
 
+const CURSEFORGE_PROXY_BASE: &str = "https://vlox-curseforge-proxy.workers.dev";
+
 fn appdata() -> Result<PathBuf, String> {
     let root = std::env::var_os("APPDATA")
         .map(PathBuf::from)
@@ -246,14 +248,13 @@ pub fn install_modrinth_pack(slug: &str) -> Result<String, String> {
     result
 }
 
-pub fn import_curseforge_modpack(api_key: &str) -> Result<String, String> {
-    if api_key.trim().is_empty() { return Err("Enter your CurseForge API key in Modpack Manager first.".to_owned()); }
+pub fn import_curseforge_modpack() -> Result<String, String> {
     let archive_path = rfd::FileDialog::new().add_filter("CurseForge modpack export", &["zip"]).pick_file()
         .ok_or_else(|| "No CurseForge modpack selected.".to_owned())?;
-    import_curseforge_archive(&archive_path, api_key)
+    import_curseforge_archive(&archive_path)
 }
 
-fn import_curseforge_archive(archive_path: &Path, api_key: &str) -> Result<String, String> {
+fn import_curseforge_archive(archive_path: &Path) -> Result<String, String> {
     let file = fs::File::open(archive_path).map_err(|e| e.to_string())?;
     let mut archive = zip::ZipArchive::new(file).map_err(|e| format!("Invalid CurseForge archive: {e}"))?;
     let mut manifest_text = String::new();
@@ -277,8 +278,8 @@ fn import_curseforge_archive(archive_path: &Path, api_key: &str) -> Result<Strin
         for item in files {
             let project = item.get("projectID").and_then(|v| v.as_u64()).ok_or("Invalid CurseForge project ID")?;
             let file_id = item.get("fileID").and_then(|v| v.as_u64()).ok_or("Invalid CurseForge file ID")?;
-            let url = format!("https://api.curseforge.com/v1/mods/{project}/files/{file_id}");
-            let data: serde_json::Value = client.get(url).header("x-api-key", api_key).send()
+            let url = format!("{CURSEFORGE_PROXY_BASE}/v1/mods/{project}/files/{file_id}");
+            let data: serde_json::Value = client.get(url).send()
                 .map_err(|e| format!("CurseForge API request failed: {e}"))?.error_for_status()
                 .map_err(|e| format!("CurseForge API rejected the key or file request: {e}"))?.json().map_err(|e| e.to_string())?;
             let download_url = data.pointer("/data/downloadUrl").and_then(|v| v.as_str())
@@ -317,11 +318,9 @@ pub struct CurseForgePack {
     pub downloads: u64,
 }
 
-pub fn search_curseforge_modpacks(query: &str, api_key: &str) -> Result<Vec<CurseForgePack>, String> {
-    if api_key.trim().is_empty() { return Err("Enter your CurseForge API key to search CurseForge.".to_owned()); }
+pub fn search_curseforge_modpacks(query: &str) -> Result<Vec<CurseForgePack>, String> {
     let client = reqwest::blocking::Client::builder().user_agent("VLOX-CLIENT/0.4").build().map_err(|e| e.to_string())?;
-    let response = client.get("https://api.curseforge.com/v1/mods/search")
-        .header("x-api-key", api_key)
+    let response = client.get(format!("{CURSEFORGE_PROXY_BASE}/v1/mods/search"))
         .query(&[
             ("gameId", "432"), ("classId", "4471"), ("searchFilter", query),
             ("pageSize", "20"), ("sortField", "6"), ("sortOrder", "desc"),
@@ -339,11 +338,9 @@ pub fn search_curseforge_modpacks(query: &str, api_key: &str) -> Result<Vec<Curs
     })).collect())
 }
 
-pub fn install_curseforge_project(project_id: u64, api_key: &str) -> Result<String, String> {
-    if api_key.trim().is_empty() { return Err("Enter your CurseForge API key first.".to_owned()); }
+pub fn install_curseforge_project(project_id: u64) -> Result<String, String> {
     let client = reqwest::blocking::Client::builder().user_agent("VLOX-CLIENT/0.4").build().map_err(|e| e.to_string())?;
-    let response = client.get(format!("https://api.curseforge.com/v1/mods/{project_id}/files"))
-        .header("x-api-key", api_key)
+    let response = client.get(format!("{CURSEFORGE_PROXY_BASE}/v1/mods/{project_id}/files"))
         .query(&[("gameVersion", "26.2"), ("modLoaderType", "4"), ("pageSize", "20"), ("index", "0")])
         .send().map_err(|e| e.to_string())?.error_for_status().map_err(|e| format!("CurseForge file lookup failed: {e}"))?;
     let value: serde_json::Value = response.json().map_err(|e| e.to_string())?;
@@ -358,7 +355,7 @@ pub fn install_curseforge_project(project_id: u64, api_key: &str) -> Result<Stri
     let temp = appdata()?.join(".vlox").join(format!("curseforge-{project_id}.zip"));
     if let Some(parent) = temp.parent() { fs::create_dir_all(parent).map_err(|e| e.to_string())?; }
     fs::write(&temp, &bytes).map_err(|e| e.to_string())?;
-    let result = import_curseforge_archive(&temp, api_key);
+    let result = import_curseforge_archive(&temp);
     let _ = fs::remove_file(&temp);
     result.map(|message| format!("{message} ({filename})"))
 }
