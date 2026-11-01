@@ -79,6 +79,8 @@ fn block_color(block: Block) -> Color {
         Block::Dirt => Color::new(0.48, 0.31, 0.18, 1.0),
         Block::Stone => Color::new(0.48, 0.49, 0.51, 1.0),
         Block::Sand => Color::new(0.83, 0.76, 0.52, 1.0),
+        Block::OakLog => Color::new(0.42, 0.27, 0.14, 1.0),
+        Block::OakLeaves => Color::new(0.19, 0.48, 0.20, 1.0),
     }
 }
 
