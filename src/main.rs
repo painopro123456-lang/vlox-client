@@ -267,6 +267,17 @@ async fn main() {
         let render_chunk_x = (player.body.position[0].floor() as i32).div_euclid(16);
         let render_chunk_z = (player.body.position[2].floor() as i32).div_euclid(16);
         draw_world(&world, render_chunk_x, render_chunk_z);
+        let look = player.forward();
+        let origin = [player.position.x, player.position.y, player.position.z];
+        let direction = [look.x, look.y, look.z];
+        if let Some(hit) = cast_block_ray(&world, origin, direction, 5.0) {
+            let [x, y, z] = hit.block_position;
+            draw_cube_wires(
+                vec3(x as f32, y as f32, z as f32),
+                vec3(1.015, 1.015, 1.015),
+                Color::new(0.06, 0.06, 0.06, 0.95),
+            );
+        }
         set_default_camera();
 
         frames += 1;
