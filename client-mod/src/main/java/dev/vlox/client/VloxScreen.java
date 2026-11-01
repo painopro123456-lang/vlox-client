@@ -25,8 +25,6 @@ public final class VloxScreen extends Screen {
         if (section.equals("HUD")) {
             addToggle("FPS counter", VloxClient.showFps, v -> VloxClient.showFps = v, left + 170, top + 112);
             addToggle("Coordinates", VloxClient.showCoordinates, v -> VloxClient.showCoordinates = v, left + 170, top + 148);
-        } else if (section.equals("Modules")) {
-            addToggle("Clean chat", VloxClient.cleanChat, v -> VloxClient.cleanChat = v, left + 170, top + 112);
         }
     }
 
@@ -56,7 +54,7 @@ public final class VloxScreen extends Screen {
         } else if (section.equals("HUD")) {
             context.drawText(textRenderer, "Choose the HUD elements you want to see.", left + 170, top + 98, 0xFF9EADC2, false);
         } else if (section.equals("Modules")) {
-            context.drawText(textRenderer, "Client-side quality-of-life options.", left + 170, top + 98, 0xFF9EADC2, false);
+            context.drawText(textRenderer, "More client modules are being built for VLOX.", left + 170, top + 98, 0xFF9EADC2, false);
         } else {
             context.drawText(textRenderer, "VLOX Client • Fabric 1.21.1", left + 170, top + 116, 0xFF9EADC2, false);
             context.drawText(textRenderer, "More settings are coming in later builds.", left + 170, top + 140, 0xFF9EADC2, false);
