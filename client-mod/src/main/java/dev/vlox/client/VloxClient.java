@@ -37,10 +37,10 @@ public final class VloxClient implements ClientModInitializer {
 
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             while (openMenu.consumeClick()) {
-                if (client.screen instanceof VloxScreen) {
-                    client.setScreen(null);
+                if (client.gui.screen() instanceof VloxScreen) {
+                    client.gui.setScreen(null);
                 } else {
-                    client.setScreen(new VloxScreen());
+                    client.gui.setScreen(new VloxScreen());
                 }
             }
         });
@@ -48,7 +48,7 @@ public final class VloxClient implements ClientModInitializer {
 
     private static void renderHud(GuiGraphicsExtractor graphics, net.minecraft.client.DeltaTracker tickCounter) {
         Minecraft client = Minecraft.getInstance();
-        if (client.player == null || client.screen != null) return;
+        if (client.player == null || client.gui.screen() != null) return;
 
         int y = 8;
         if (showFps) {
