@@ -38,10 +38,11 @@ impl Player {
         if is_key_down(KeyCode::S) { movement -= forward; }
         if is_key_down(KeyCode::D) { movement += right; }
         if is_key_down(KeyCode::A) { movement -= right; }
-        self.body.tick(
+        self.body.tick_with_sprint(
             world,
             [movement.x, 0.0, movement.z],
             is_key_pressed(KeyCode::Space),
+            is_key_down(KeyCode::LeftControl),
             dt,
         );
         self.position = vec3(
@@ -220,8 +221,9 @@ async fn main() {
         draw_rectangle(18.0, 18.0, 235.0, 92.0, Color::new(0.035, 0.055, 0.085, 0.78));
         draw_text("VLOX CLIENT", 32.0, 48.0, 25.0, WHITE);
         draw_text(&format!("FPS  {}", shown_fps), 32.0, 73.0, 18.0, SKYBLUE);
-        draw_text("WASD move | SPACE jump | RMB look | LMB mine | F place | F5 save | F9 load", 32.0, 98.0, 15.0, LIGHTGRAY);
-        draw_text(&world_status, 32.0, 130.0, 16.0, LIGHTGRAY);
+        draw_text("WASD move | CTRL sprint | SPACE jump | RMB look | LMB mine | F place", 32.0, 98.0, 15.0, LIGHTGRAY);
+        draw_text("F5 save | F9 load", 32.0, 130.0, 15.0, LIGHTGRAY);
+        draw_text(&world_status, 32.0, 154.0, 16.0, LIGHTGRAY);
 
         if mining_target.is_some() {
             let block = mining_target.map(|p| world.get_block(p[0], p[1], p[2])).unwrap_or(Block::Air);
