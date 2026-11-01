@@ -3,15 +3,19 @@
 VLOX CLIENT is a custom Minecraft Java client experience with two parts:
 
 - **VLOX Desktop** — a native desktop companion with a launcher-style interface.
-- **VLOX In-game** — a Fabric client mod that adds the VLOX menu and client-side UI options.
+- **VLOX In-game** — a Fabric client mod with the VLOX menu and client-side HUD options.
 
 This is an independent client-side add-on, not a replacement Minecraft game engine. It does not bundle Mojang assets.
 
-## Current foundation
+## Target version
 
-The desktop app can open the installed Minecraft Launcher and copy a locally built VLOX mod JAR into the default Windows `.minecraft/mods` directory. The in-game menu opens with **Right Shift** and currently contains Home, HUD, Modules and Settings sections.
+**Minecraft Java 26.2**, Fabric Loader 0.19.3, Fabric API 0.161.0+26.2, and Java 25.
 
-This is an early foundation. Direct Microsoft authentication, automatic profile/version installation, direct game launching, persistent settings and the full feature set are not implemented yet.
+The in-game menu opens with **Right Shift**. The current foundation includes Home, HUD, Modules and Settings sections, plus FPS and coordinates HUD toggles.
+
+## Current desktop foundation
+
+The desktop app can open the installed Minecraft Launcher and copy the locally built VLOX mod JAR into the default Windows `.minecraft/mods` directory. It does not yet perform Microsoft authentication, install the Minecraft 26.2 profile automatically, or launch the game directly.
 
 ## Build
 
@@ -21,7 +25,7 @@ cargo run
 cargo build --release
 ```
 
-Fabric mod (JDK 21 and Gradle):
+Fabric mod (JDK 25 and Gradle 9.5.1):
 ```sh
 cd client-mod
 gradle build
@@ -31,9 +35,10 @@ The mod JAR is created in `client-mod/build/libs`.
 
 ## Install
 
-1. Install Fabric Loader for Minecraft Java **1.21.1**.
-2. Build the desktop app and Fabric mod, or download the matching GitHub Actions artifacts.
-3. In VLOX Desktop, open **Mod Library** and install the mod.
-4. Start the Fabric 1.21.1 profile from the official Minecraft Launcher.
+1. Install Fabric Loader for Minecraft Java **26.2**.
+2. Install Fabric API **0.161.0+26.2**.
+3. Build the desktop app and Fabric mod, or download the matching GitHub Actions artifacts.
+4. In VLOX Desktop, open **Mod Library** and install the VLOX mod.
+5. Start the Fabric 26.2 profile from the official Minecraft Launcher.
 
-Compatibility with other Minecraft versions is not claimed until separately built and tested.
+The Fabric mod is version-locked to 26.2 and will not load on 1.21.x or other Minecraft versions.
