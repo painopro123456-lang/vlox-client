@@ -1,7 +1,6 @@
 use macroquad::prelude::*;
-use vlox_client::{cast_block_ray, mine_block, place_block, Block, PhysicsBody, World};
+use vlox_client::{cast_block_ray, generate_world, mine_block, place_block, Block, PhysicsBody, World};
 
-const WORLD_RADIUS: i32 = 12;
 const BLOCK_SIZE: f32 = 1.0;
 const MOUSE_SENSITIVITY: f32 = 0.0025;
 
@@ -13,12 +12,12 @@ struct Player {
 }
 
 impl Player {
-    fn new() -> Self {
+    fn new(spawn_y: f32) -> Self {
         Self {
-            position: vec3(0.0, 5.62, 6.0),
+            position: vec3(0.0, spawn_y + 1.62, 6.0),
             yaw: 0.0,
             pitch: -0.18,
-            body: PhysicsBody::new([0.0, 4.0, 6.0]),
+            body: PhysicsBody::new([0.0, spawn_y, 6.0]),
         }
     }
 
@@ -83,8 +82,8 @@ fn block_color(block: Block) -> Color {
 }
 
 fn draw_world(world: &World) {
-    for x in 0..16_i32 {
-        for z in 0..16_i32 {
+    for x in -16..32_i32 {
+        for z in -16..32_i32 {
             for y in 0..64_i32 {
                 let block = world.get_block(x, y, z);
                 if block == Block::Air { continue; }
@@ -101,10 +100,11 @@ fn draw_world(world: &World) {
 
 #[macroquad::main(window_conf)]
 async fn main() {
-    let mut world = World::new_flat_test_world();
+    let mut world = generate_world(0x564C4F585F323032, 1);
     let hotbar = [Block::Grass, Block::Dirt, Block::Stone, Block::Sand];
     let mut selected_slot = 0_usize;
-    let mut player = Player::new();
+    let spawn_y = world.surface_height(0, 6).unwrap_or(24) as f32 + 1.0;
+    let mut player = Player::new(spawn_y);
     let mut paused = false;
     let mut frames = 0_u32;
     let mut fps_timer = 0.0_f32;
