@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "id": "vlox",
+  "version": "${version}",
+  "name": "VLOX Client",
+  "description": "A custom client-side interface for Minecraft Java.",
+  "authors": ["VLOX"],
+  "environment": "client",
+  "entrypoints": { "client": ["dev.vlox.client.VloxClient"] },
+  "depends": { "fabricloader": ">=0.16.0", "minecraft": "1.21.1", "java": ">=21", "fabric-api": "*" }
+}
