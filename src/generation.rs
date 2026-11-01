@@ -35,6 +35,64 @@ pub fn generate_world(seed: u64, chunk_radius: i32) -> World {
             world.insert_chunk(chunk_x, chunk_z, chunk);
         }
     }
+    // Carve deterministic underground tunnel systems in each loaded chunk.
+    for chunk_z in -chunk_radius..=chunk_radius {
+        for chunk_x in -chunk_radius..=chunk_radius {
+            for worm in 0..2_u64 {
+                let mut rng = seed
+                    ^ (chunk_x as i64 as u64).wrapping_mul(0x9E3779B185EBCA87)
+                    ^ (chunk_z as i64 as u64).wrapping_mul(0xC2B2AE3D27D4EB4F)
+                    ^ worm.wrapping_mul(0xA24BAED4963EE407);
+                let mut x = chunk_x * CHUNK_SIZE as i32 + (next_random(&mut rng) % 16) as i32;
+                let mut z = chunk_z * CHUNK_SIZE as i32 + (next_random(&mut rng) % 16) as i32;
+                let mut y = 7 + (next_random(&mut rng) % 15) as i32;
+                let mut dir_x = 0.0_f32;
+                let mut dir_z = 0.0_f32;
+
+                for _ in 0..22 {
+                    let radius = if next_random(&mut rng) % 5 == 0 { 2 } else { 1 };
+                    for dy in -radius..=radius {
+                        for dz in -radius..=radius {
+                            for dx in -radius..=radius {
+                                if dx * dx + dy * dy + dz * dz > radius * radius + 1 { continue; }
+                                let bx = x + dx;
+                                let by = y + dy;
+                                let bz = z + dz;
+                                let block = world.get_block(bx, by, bz);
+                                if matches!(block, Block::Stone | Block::Dirt) {
+                                    world.set_block(bx, by, bz, Block::Air);
+                                }
+                            }
+                        }
+                    }
+                    dir_x = (dir_x + ((next_random(&mut rng) % 200) as f32 / 100.0 - 1.0) * 0.35).clamp(-1.0, 1.0);
+                    dir_z = (dir_z + ((next_random(&mut rng) % 200) as f32 / 100.0 - 1.0) * 0.35).clamp(-1.0, 1.0);
+                    x += dir_x.round() as i32;
+                    z += dir_z.round() as i32;
+                    y += (next_random(&mut rng) % 3) as i32 - 1;
+                    y = y.clamp(5, 23);
+                }
+            }
+        }
+    }
+
+    // Scatter small coal and iron deposits through underground stone.
+    for z in -chunk_radius * CHUNK_SIZE as i32..(chunk_radius + 1) * CHUNK_SIZE as i32 {
+        for x in -chunk_radius * CHUNK_SIZE as i32..(chunk_radius + 1) * CHUNK_SIZE as i32 {
+            let top = world.surface_height(x, z).unwrap_or(0) as i32;
+            for y in 4..(top - 3).max(4) {
+                if world.get_block(x, y, z) != Block::Stone { continue; }
+                let depth_seed = seed ^ (y as i64 as u64).wrapping_mul(0xD1B54A32D192ED03);
+                let value = hash_value(depth_seed, x, z);
+                if value > 0.997 {
+                    world.set_block(x, y, z, Block::IronOre);
+                } else if value > 0.991 {
+                    world.set_block(x, y, z, Block::CoalOre);
+                }
+            }
+        }
+    }
+
     // Add oak trees on grassland. World-coordinate writes let trees cross chunk edges.
     let min_x = -chunk_radius * CHUNK_SIZE as i32 + 2;
     let max_x = (chunk_radius + 1) * CHUNK_SIZE as i32 - 2;
@@ -77,6 +135,13 @@ pub fn generate_world(seed: u64, chunk_radius: i32) -> World {
         }
     }
     world
+}
+
+fn next_random(state: &mut u64) -> u64 {
+    *state ^= *state << 13;
+    *state ^= *state >> 7;
+    *state ^= *state << 17;
+    *state
 }
 
 fn octave_noise(seed: u64, x: i32, z: i32) -> f32 {
@@ -149,6 +214,30 @@ mod tests {
             }
         }
         assert!(different);
+    }
+
+    #[test]
+    fn generated_world_contains_underground_caves_and_ores() {
+        let world = generate_world(0x564C4F585F323032, 1);
+        let mut cave = false;
+        let mut coal = false;
+        let mut iron = false;
+        for x in -16..32 {
+            for z in -16..32 {
+                let top = world.surface_height(x, z).unwrap_or(0) as i32;
+                for y in 5..top.saturating_sub(3) {
+                    match world.get_block(x, y, z) {
+                        Block::Air => cave = true,
+                        Block::CoalOre => coal = true,
+                        Block::IronOre => iron = true,
+                        _ => {}
+                    }
+                }
+            }
+        }
+        assert!(cave);
+        assert!(coal);
+        assert!(iron);
     }
 
     #[test]
