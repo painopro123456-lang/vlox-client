@@ -1,4 +1,5 @@
 use crate::world::Block;
+use std::io::{self, Read, Write};
 
 pub const HOTBAR_SLOTS: usize = 9;
 pub const MAX_STACK: u8 = 64;
@@ -56,6 +57,51 @@ impl Inventory {
         false
     }
 
+    pub fn save<W: Write>(&self, mut writer: W) -> io::Result<()> {
+        writer.write_all(b"VLOXINV1")?;
+        writer.write_all(&[self.selected as u8])?;
+        for stack in self.slots {
+            let id = stack.block.map_or(0, |block| block as u8);
+            writer.write_all(&[id, stack.count])?;
+        }
+        Ok(())
+    }
+
+    pub fn load<R: Read>(mut reader: R) -> io::Result<Self> {
+        let mut header = [0_u8; 8];
+        reader.read_exact(&mut header)?;
+        if &header != b"VLOXINV1" {
+            return Err(io::Error::new(io::ErrorKind::InvalidData, "invalid VLOX inventory header"));
+        }
+        let mut selected = [0_u8; 1];
+        reader.read_exact(&mut selected)?;
+        if selected[0] as usize >= HOTBAR_SLOTS {
+            return Err(io::Error::new(io::ErrorKind::InvalidData, "invalid selected hotbar slot"));
+        }
+
+        let mut inventory = Self::default();
+        inventory.selected = selected[0] as usize;
+        for stack in &mut inventory.slots {
+            let mut bytes = [0_u8; 2];
+            reader.read_exact(&mut bytes)?;
+            let block = match bytes[0] {
+                0 => None,
+                1 => Some(Block::Grass),
+                2 => Some(Block::Dirt),
+                3 => Some(Block::Stone),
+                4 => Some(Block::Sand),
+                5 => Some(Block::OakLog),
+                6 => Some(Block::OakLeaves),
+                _ => return Err(io::Error::new(io::ErrorKind::InvalidData, "unknown inventory block ID")),
+            };
+            if bytes[1] > MAX_STACK || (block.is_none() && bytes[1] != 0) || (block.is_some() && bytes[1] == 0) {
+                return Err(io::Error::new(io::ErrorKind::InvalidData, "invalid inventory stack count"));
+            }
+            *stack = ItemStack { block, count: bytes[1] };
+        }
+        Ok(inventory)
+    }
+
     pub fn consume_selected(&mut self) -> bool {
         let stack = &mut self.slots[self.selected];
         if stack.is_empty() { return false; }
@@ -84,6 +130,22 @@ mod tests {
         assert!(inventory.consume_selected());
         assert!(inventory.stack(0).unwrap().is_empty());
         assert!(!inventory.consume_selected());
+    }
+
+    #[test]
+    fn inventory_save_load_preserves_stacks_and_selection() {
+        let mut inventory = Inventory::default();
+        inventory.add(Block::OakLog);
+        inventory.add(Block::OakLog);
+        inventory.add(Block::Sand);
+        inventory.select(2);
+        let mut bytes = Vec::new();
+        inventory.save(&mut bytes).unwrap();
+        let loaded = Inventory::load(bytes.as_slice()).unwrap();
+        assert_eq!(loaded.selected_slot(), 2);
+        assert_eq!(loaded.stack(0).unwrap().count, 2);
+        assert_eq!(loaded.stack(0).unwrap().block, Some(Block::OakLog));
+        assert_eq!(loaded.stack(1).unwrap().block, Some(Block::Sand));
     }
 
     #[test]
