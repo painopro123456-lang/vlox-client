@@ -16,7 +16,7 @@ public final class VloxClient implements ClientModInitializer {
     public void onInitializeClient() {
         KeyBinding openMenu = KeyBindingHelper.registerKeyBinding(new KeyBinding(
             "key.vlox.open_menu", InputUtil.Type.KEYSYM, GLFW.GLFW_KEY_RIGHT_SHIFT,
-            KeyBinding.Category.MISC
+            "category.vlox.main"
         ));
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             while (openMenu.wasPressed()) {
