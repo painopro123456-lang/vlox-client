@@ -28,6 +28,8 @@ struct VloxApp {
     modrinth_query: String,
     modrinth_results: Vec<library::ModrinthPack>,
     curseforge_api_key: String,
+    curseforge_query: String,
+    curseforge_results: Vec<library::CurseForgePack>,
 }
 
 impl Default for VloxApp {
@@ -53,6 +55,8 @@ impl Default for VloxApp {
             modrinth_query: String::new(),
             modrinth_results: Vec::new(),
             curseforge_api_key: String::new(),
+            curseforge_query: String::new(),
+            curseforge_results: Vec::new(),
         }
     }
 }
@@ -375,9 +379,39 @@ impl eframe::App for VloxApp {
                     });
                     ui.add_space(10.0);
                     Self::card(ui, |ui| {
-                        ui.label(RichText::new("CURSEFORGE IMPORT").strong().color(WHITE));
-                        ui.label(RichText::new("CurseForge requires an API key to download project files. Paste your key here for this session, then import a CurseForge exported ZIP.").size(11.0).color(MUTED));
+                        ui.label(RichText::new("CURSEFORGE DISCOVERY").strong().color(WHITE));
+                        ui.label(RichText::new("Search CurseForge modpacks for Minecraft 26.2 / Fabric. CurseForge requires an API key.").size(11.0).color(MUTED));
                         ui.add_sized([420.0, 30.0], egui::TextEdit::singleline(&mut self.curseforge_api_key).password(true).hint_text("CurseForge API key"));
+                        ui.horizontal(|ui| {
+                            ui.add_sized([360.0, 30.0], egui::TextEdit::singleline(&mut self.curseforge_query).hint_text("Search CurseForge modpacks"));
+                            if ui.button("Search").clicked() {
+                                match library::search_curseforge_modpacks(&self.curseforge_query, &self.curseforge_api_key) {
+                                    Ok(results) => {
+                                        self.curseforge_results = results;
+                                        self.library_status = format!("Found {} CurseForge modpacks.", self.curseforge_results.len());
+                                    }
+                                    Err(error) => self.library_status = error,
+                                }
+                            }
+                        });
+                        for pack in self.curseforge_results.clone() {
+                            ui.separator();
+                            ui.horizontal(|ui| {
+                                ui.vertical(|ui| {
+                                    ui.label(RichText::new(&pack.title).strong().color(WHITE));
+                                    ui.label(RichText::new(format!("{} downloads · {}", pack.downloads, pack.summary)).size(11.0).color(MUTED));
+                                });
+                                ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+                                    if ui.button("Install").clicked() {
+                                        self.library_status = match library::install_curseforge_project(pack.id, &self.curseforge_api_key) {
+                                            Ok(message) => message,
+                                            Err(error) => error,
+                                        };
+                                        self.instances = library::list_instances().unwrap_or_default();
+                                    }
+                                });
+                            });
+                        }
                     });
                     if !self.library_status.is_empty() {
                         ui.add_space(8.0);
