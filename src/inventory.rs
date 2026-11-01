@@ -92,6 +92,8 @@ impl Inventory {
                 4 => Some(Block::Sand),
                 5 => Some(Block::OakLog),
                 6 => Some(Block::OakLeaves),
+                7 => Some(Block::CoalOre),
+                8 => Some(Block::IronOre),
                 _ => return Err(io::Error::new(io::ErrorKind::InvalidData, "unknown inventory block ID")),
             };
             if bytes[1] > MAX_STACK || (block.is_none() && bytes[1] != 0) || (block.is_some() && bytes[1] == 0) {
