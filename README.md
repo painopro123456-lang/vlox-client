@@ -49,6 +49,7 @@ cargo build --release
 | F5 | Save world and inventory (`vlox-world.dat`, `vlox-inventory.dat`) |
 | F9 | Load world and inventory from their save files |
 | Escape | Pause / resume |
+| R | Respawn after death |
 
 Mined blocks are added to the hotbar inventory. Placing a block consumes one item from the selected stack.
 
