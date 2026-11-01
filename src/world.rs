@@ -97,9 +97,8 @@ impl World {
         for (&(chunk_x, chunk_z), chunk) in entries {
             writer.write_all(&chunk_x.to_le_bytes())?;
             writer.write_all(&chunk_z.to_le_bytes())?;
-            for block in &chunk.blocks {
-                writer.write_all(&[*block as u8])?;
-            }
+            let encoded: Vec<u8> = chunk.blocks.iter().map(|block| *block as u8).collect();
+            writer.write_all(&encoded)?;
         }
         Ok(())
     }
@@ -130,11 +129,11 @@ impl World {
                 return Err(io::Error::new(io::ErrorKind::InvalidData, "duplicate chunk coordinate"));
             }
 
+            let mut encoded = vec![0_u8; CHUNK_SIZE * WORLD_HEIGHT * CHUNK_SIZE];
+            reader.read_exact(&mut encoded)?;
             let mut chunk = Chunk::default();
-            for block in &mut chunk.blocks {
-                let mut id = [0_u8; 1];
-                reader.read_exact(&mut id)?;
-                *block = match id[0] {
+            for (block, id) in chunk.blocks.iter_mut().zip(encoded) {
+                *block = match id {
                     0 => Block::Air,
                     1 => Block::Grass,
                     2 => Block::Dirt,
