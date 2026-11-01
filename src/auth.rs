@@ -230,18 +230,3 @@ fn save_account(account: &Account) -> Result<(), String> {
         Err("Secure account storage is currently supported on Windows builds.".to_owned())
     }
 }
-    #[cfg(windows)]
-    {
-        let serialized = serde_json::to_string(account)
-            .map_err(|error| format!("Could not encode the account session: {error}"))?;
-        let entry = keyring::Entry::new(SERVICE_NAME, ACCOUNT_KEY)
-            .map_err(|error| format!("Could not access Windows Credential Manager: {error}"))?;
-        entry.set_password(&serialized)
-            .map_err(|error| format!("Could not securely save the Microsoft session: {error}"))
-    }
-    #[cfg(not(windows))]
-    {
-        let _ = account;
-        Err("Secure account storage is currently supported on Windows builds.".to_owned())
-    }
-}
