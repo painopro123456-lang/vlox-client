@@ -3,9 +3,16 @@
   "id": "vlox",
   "version": "${version}",
   "name": "VLOX Client",
-  "description": "A custom client-side interface for Minecraft Java.",
+  "description": "A custom client-side interface for Minecraft Java 26.2.",
   "authors": ["VLOX"],
   "environment": "client",
-  "entrypoints": { "client": ["dev.vlox.client.VloxClient"] },
-  "depends": { "fabricloader": ">=0.16.0", "minecraft": "1.21.1", "java": ">=21", "fabric-api": "*" }
+  "entrypoints": {
+    "client": ["dev.vlox.client.VloxClient"]
+  },
+  "depends": {
+    "fabricloader": ">=0.19.3",
+    "minecraft": "26.2",
+    "java": ">=25",
+    "fabric-api": ">=0.161.0"
+  }
 }
