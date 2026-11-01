@@ -136,6 +136,11 @@ async fn main() {
             if is_key_pressed(KeyCode::Key2) { inventory.select(1); }
             if is_key_pressed(KeyCode::Key3) { inventory.select(2); }
             if is_key_pressed(KeyCode::Key4) { inventory.select(3); }
+            if is_key_pressed(KeyCode::Key5) { inventory.select(4); }
+            if is_key_pressed(KeyCode::Key6) { inventory.select(5); }
+            if is_key_pressed(KeyCode::Key7) { inventory.select(6); }
+            if is_key_pressed(KeyCode::Key8) { inventory.select(7); }
+            if is_key_pressed(KeyCode::Key9) { inventory.select(8); }
             if is_key_pressed(KeyCode::F5) {
                 world_status = match std::fs::File::create("vlox-world.dat")
                     .and_then(|file| world.save(file)) {
@@ -228,7 +233,7 @@ async fn main() {
         draw_rectangle(18.0, 18.0, 235.0, 92.0, Color::new(0.035, 0.055, 0.085, 0.78));
         draw_text("VLOX CLIENT", 32.0, 48.0, 25.0, WHITE);
         draw_text(&format!("FPS  {}", shown_fps), 32.0, 73.0, 18.0, SKYBLUE);
-        draw_text("WASD move | CTRL sprint | SPACE jump | RMB look | LMB mine | F place", 32.0, 98.0, 15.0, LIGHTGRAY);
+        draw_text("WASD move | CTRL sprint | SPACE jump | RMB look | LMB mine | F place | 1-9 hotbar", 32.0, 98.0, 15.0, LIGHTGRAY);
         draw_text("F5 save | F9 load", 32.0, 130.0, 15.0, LIGHTGRAY);
         draw_text(&world_status, 32.0, 154.0, 16.0, LIGHTGRAY);
 
@@ -247,10 +252,10 @@ async fn main() {
             draw_rectangle(bar_x, bar_y, 180.0 * progress, 8.0, Color::new(0.92, 0.82, 0.36, 1.0));
         }
 
-        let hotbar_width = 4.0 * 54.0 + 3.0 * 8.0;
+        let hotbar_width = 9.0 * 54.0 + 8.0 * 8.0;
         let hotbar_x = (screen_width() - hotbar_width) * 0.5;
         let hotbar_y = screen_height() - 76.0;
-        for slot in 0..4 {
+        for slot in 0..9 {
             let x = hotbar_x + slot as f32 * 62.0;
             draw_rectangle(x, hotbar_y, 54.0, 54.0, Color::new(0.035, 0.045, 0.06, 0.82));
             if let Some(stack) = inventory.stack(slot) {
