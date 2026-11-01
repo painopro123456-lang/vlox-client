@@ -40,7 +40,7 @@ public final class VloxScreen extends Screen {
     }
 
     private Button navButton(String label, String target, int x, int y) {
-        return Button.builder(Component.literal(label), button -> minecraft.setScreen(new VloxScreen(target)))
+        return Button.builder(Component.literal(label), button -> minecraft.gui.setScreen(new VloxScreen(target)))
             .bounds(x, y, 112, 26).build();
     }
 
@@ -49,7 +49,7 @@ public final class VloxScreen extends Screen {
         return Button.builder(Component.literal(label + "   " + (enabled ? "ON" : "OFF")), button -> {
             if (fps) VloxClient.showFps = !VloxClient.showFps;
             else VloxClient.showCoordinates = !VloxClient.showCoordinates;
-            minecraft.setScreen(new VloxScreen("HUD"));
+            minecraft.gui.setScreen(new VloxScreen("HUD"));
         }).bounds(x, y, 220, 28).build();
     }
 
@@ -81,6 +81,6 @@ public final class VloxScreen extends Screen {
 
     @Override
     public void onClose() {
-        if (minecraft != null) minecraft.setScreen(null);
+        if (minecraft != null) minecraft.gui.setScreen(null);
     }
 }
