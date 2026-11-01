@@ -152,6 +152,26 @@ mod tests {
     }
 
     #[test]
+    fn grassland_world_generates_oak_trees() {
+        let world = generate_world(0x564C4F585F323032, 1);
+        let mut found_log = false;
+        let mut found_leaves = false;
+        for x in -16..32 {
+            for z in -16..32 {
+                for y in 0..WORLD_HEIGHT as i32 {
+                    match world.get_block(x, y, z) {
+                        Block::OakLog => found_log = true,
+                        Block::OakLeaves => found_leaves = true,
+                        _ => {}
+                    }
+                }
+            }
+        }
+        assert!(found_log);
+        assert!(found_leaves);
+    }
+
+    #[test]
     fn generated_chunks_have_solid_surface_and_stone_below() {
         let world = generate_world(99, 0);
         let top = world.surface_height(8, 8).unwrap() as i32;
