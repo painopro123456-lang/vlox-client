@@ -13,7 +13,11 @@ pub fn cast_block_ray(world: &World, origin: [f32; 3], direction: [f32; 3], max_
     if length <= f32::EPSILON || max_distance <= 0.0 { return None; }
     let dir = [direction[0] / length, direction[1] / length, direction[2] / length];
     let mut cell = [origin[0].floor() as i32, origin[1].floor() as i32, origin[2].floor() as i32];
-    let step = [dir[0].signum() as i32, dir[1].signum() as i32, dir[2].signum() as i32];
+    let step = [
+        if dir[0] > 0.0 { 1 } else if dir[0] < 0.0 { -1 } else { 0 },
+        if dir[1] > 0.0 { 1 } else if dir[1] < 0.0 { -1 } else { 0 },
+        if dir[2] > 0.0 { 1 } else if dir[2] < 0.0 { -1 } else { 0 },
+    ];
     let mut t_max = [0.0; 3];
     let mut t_delta = [f32::INFINITY; 3];
 
