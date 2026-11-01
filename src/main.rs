@@ -1,5 +1,5 @@
 use macroquad::prelude::*;
-use vlox_client::{cast_block_ray, generate_chunk, generate_world, mine_block, place_block, Block, Inventory, PhysicsBody, Vitals, World};
+use vlox_client::{cast_block_ray, generate_chunk, generate_world, mine_block, place_block, Block, Inventory, PhysicsBody, Vitals, World, WorldClock};
 
 const BLOCK_SIZE: f32 = 1.0;
 const WORLD_SEED: u64 = 0x564C4F585F323032;
@@ -137,6 +137,7 @@ async fn main() {
     let mut mining_progress = 0.0_f32;
     let spawn_y = world.surface_height(0, 6).unwrap_or(24) as f32 + 1.0;
     let mut player = Player::new(spawn_y);
+    let mut world_clock = WorldClock::default();
     let mut paused = false;
     let mut frames = 0_u32;
     let mut fps_timer = 0.0_f32;
@@ -162,6 +163,7 @@ async fn main() {
         }
 
         if !paused {
+            world_clock.tick(dt);
             if vitals.is_alive() {
                 player.update(&world, &mut vitals, dt);
             }
@@ -253,7 +255,8 @@ async fn main() {
             }
         }
 
-        clear_background(Color::new(0.48, 0.70, 0.91, 1.0));
+        let sky = world_clock.sky_rgb();
+        clear_background(Color::new(sky[0], sky[1], sky[2], 1.0));
 
         let camera = Camera3D {
             position: player.position,
