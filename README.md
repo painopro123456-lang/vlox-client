@@ -8,7 +8,7 @@ The repository currently contains an early playable voxel-engine prototype with:
 
 - Rust application and Macroquad 3D renderer.
 - Seeded procedural terrain with rolling height variation, grass/dirt/stone layers, sandy regions, generated oak trees, underground cave tunnels, and coal/iron ore deposits.
-- 16 × 16 × 64 block chunks with world-coordinate access across chunk boundaries.
+- 16 × 16 × 64 block chunks with deterministic per-chunk terrain generation and runtime chunk streaming as the player explores.
 - First-person movement, gravity, jumping, solid-block collision, and sprinting.
 - Survival health and food meters, fall damage, food-based regeneration, and starvation damage.
 - Voxel raycasting with a five-block reach.
