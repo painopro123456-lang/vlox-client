@@ -5,6 +5,7 @@ const PLAYER_HEIGHT: f32 = 1.8;
 const GRAVITY: f32 = 24.0;
 const JUMP_SPEED: f32 = 8.4;
 const WALK_SPEED: f32 = 4.3;
+const SPRINT_SPEED: f32 = 5.6;
 
 /// A minimal survival-style player body. Position is the centre of the feet.
 #[derive(Clone, Copy, Debug)]
@@ -20,14 +21,19 @@ impl PhysicsBody {
     }
 
     pub fn tick(&mut self, world: &World, input: [f32; 3], jump: bool, dt: f32) {
+        self.tick_with_sprint(world, input, jump, false, dt);
+    }
+
+    pub fn tick_with_sprint(&mut self, world: &World, input: [f32; 3], jump: bool, sprint: bool, dt: f32) {
         let dt = dt.clamp(0.0, 0.05);
         let mut ix = input[0];
         let mut iz = input[2];
         let length = (ix * ix + iz * iz).sqrt();
         if length > 1.0 { ix /= length; iz /= length; }
 
-        self.velocity[0] = ix * WALK_SPEED;
-        self.velocity[2] = iz * WALK_SPEED;
+        let speed = if sprint { SPRINT_SPEED } else { WALK_SPEED };
+        self.velocity[0] = ix * speed;
+        self.velocity[2] = iz * speed;
         if jump && self.grounded {
             self.velocity[1] = JUMP_SPEED;
             self.grounded = false;
@@ -96,6 +102,16 @@ mod tests {
         player.grounded = true;
         for _ in 0..60 { player.tick(&world, [1.0, 0.0, 0.0], false, 1.0 / 60.0); }
         assert!(player.position[0] < 4.71);
+    }
+
+    #[test]
+    fn sprint_moves_faster_than_walking() {
+        let world = World::new_flat_test_world();
+        let mut walker = PhysicsBody::new([4.5, 4.0, 4.5]);
+        let mut sprinter = walker;
+        walker.tick(&world, [1.0, 0.0, 0.0], false, 1.0 / 60.0);
+        sprinter.tick_with_sprint(&world, [1.0, 0.0, 0.0], false, true, 1.0 / 60.0);
+        assert!(sprinter.velocity[0] > walker.velocity[0]);
     }
 
     #[test]
