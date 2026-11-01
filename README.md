@@ -44,8 +44,8 @@ cargo build --release
 | Hold left mouse button | Mine targeted block |
 | F | Place selected block in the adjacent cell |
 | 1–9 | Select hotbar slot |
-| F5 | Save world to `vlox-world.dat` |
-| F9 | Load world from `vlox-world.dat` |
+| F5 | Save world and inventory (`vlox-world.dat`, `vlox-inventory.dat`) |
+| F9 | Load world and inventory from their save files |
 | Escape | Pause / resume |
 
 Mined blocks are added to the hotbar inventory. Placing a block consumes one item from the selected stack.
