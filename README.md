@@ -1,17 +1,23 @@
 # VLOX CLIENT
 
-VLOX CLIENT is an independent voxel-game/client project written in Rust. The long-term goal is to build a polished, performant client with its own engine and a compatibility roadmap. This repository does **not** contain Mojang source code or bundled Minecraft assets.
+VLOX CLIENT is an independent Rust implementation project targeting the Minecraft Java Edition experience. It uses its own engine and code; it does not contain Mojang's proprietary source or bundled Minecraft assets.
 
-## Current status
+## Current implementation
 
-The first commit establishes a small, playable 3D voxel prototype:
-- Rust application using Macroquad
-- Procedurally generated block test area
-- First-person free-fly movement and mouse look
-- Pause overlay and FPS counter
-- Windows x64 release build in GitHub Actions
+The repository currently contains an early playable voxel-engine prototype with:
 
-This is an early engine prototype, **not yet a Minecraft Java Edition replacement**. Java Edition compatibility involves a large amount of independently implemented game behavior, asset handling, rendering, networking, authentication, and version-specific protocol work. Those systems will be developed and tested in stages.
+- Rust application and Macroquad 3D renderer.
+- Seeded procedural terrain with rolling height variation, grass/dirt/stone layers, sandy regions, and generated oak trees.
+- 16 × 16 × 64 block chunks with world-coordinate access across chunk boundaries.
+- First-person movement, gravity, jumping, solid-block collision, and sprinting.
+- Voxel raycasting with a five-block reach.
+- Hold-to-mine behavior with different mining times for grass, dirt, sand, and stone.
+- Block placement adjacent to the targeted block, with player-overlap prevention.
+- Four-slot survival hotbar, stack sizes up to 64, mined-block pickup, and item consumption when placing blocks.
+- Versioned binary world saving and loading.
+- Automated Rust tests for world data, generation, physics, raycasting, inventory, interactions, and persistence.
+
+This is still an early foundation, **not a complete Minecraft Java Edition replacement**. It does not yet implement the full Java Edition feature set, assets, world format, crafting, mobs, dimensions, redstone, or multiplayer/server protocol. Compatibility is not claimed until those systems are independently implemented and tested.
 
 ## Build locally
 
@@ -32,27 +38,35 @@ cargo build --release
 | Input | Action |
 |---|---|
 | W A S D | Move |
-| Space | Fly upward |
-| Left Shift | Fly downward |
+| Left Control | Sprint |
+| Space | Jump |
 | Hold right mouse button | Look around |
+| Hold left mouse button | Mine targeted block |
+| F | Place selected block in the adjacent cell |
+| 1–4 | Select hotbar slot |
+| F5 | Save world to `vlox-world.dat` |
+| F9 | Load world from `vlox-world.dat` |
 | Escape | Pause / resume |
 
-## Windows executable
+Mined blocks are added to the hotbar inventory. Placing a block consumes one item from the selected stack.
 
-Every push to `main` and every manual workflow dispatch runs **Actions → Windows Build**. The workflow builds the x64 release executable and uploads it as the artifact **VLOX-CLIENT-Windows-x64-EXE**.
+## Windows executable and tests
 
-## Roadmap
+Every push to `main` runs the Windows x64 workflow. It runs `cargo test` before compiling and publishing the release executable. The workflow publishes a direct `.exe` release asset and also uploads an Actions artifact named `VLOX-CLIENT-Windows-x64-EXE`.
 
-1. Stabilize the Rust engine foundation and automated Windows builds.
-2. Add chunk storage, block definitions, meshing, and terrain generation.
-3. Add collision, physics, inventory, block interaction, and world saving.
-4. Build rendering, UI, resource-pack, and audio systems.
-5. Develop multiplayer protocol and compatibility in clearly versioned stages.
-6. Add account/session integration and mod/plugin APIs only after the core systems are reliable.
+## Development roadmap
+
+1. Improve chunk rendering with cached face/mesh generation and reduce per-frame world traversal.
+2. Expand terrain generation with more biomes, caves, water, ores, structures, and deterministic world features.
+3. Add complete inventory screens, crafting, tools, durability, health, hunger, and survival/creative modes.
+4. Implement entity simulation, passive/hostile mobs, combat, and AI.
+5. Add dimensions, redstone, lighting, weather, and time-of-day systems.
+6. Implement resource-pack handling, audio, UI, and save compatibility.
+7. Develop Java Edition networking and protocol compatibility in explicitly tested version stages.
 
 ## Project principles
 
-- Implement independently; do not copy proprietary game source.
+- Reimplement behavior independently; do not copy proprietary game source.
 - Do not redistribute copyrighted game assets. Users must provide assets they are legally entitled to use where required.
 - Keep performance and low-end hardware support in mind.
 - Mark compatibility honestly and test each supported version rather than claiming broad compatibility prematurely.
