@@ -178,6 +178,8 @@ async fn main() {
                         Block::Dirt => 0.75,
                         Block::Sand => 0.40,
                         Block::Stone => 7.50,
+                        Block::OakLog => 2.0,
+                        Block::OakLeaves => 0.2,
                         Block::Air => 0.0,
                     };
                     mining_progress += dt;
@@ -243,6 +245,8 @@ async fn main() {
                 Block::Grass | Block::Dirt => 0.75,
                 Block::Sand => 0.40,
                 Block::Stone => 7.50,
+                Block::OakLog => 2.0,
+                Block::OakLeaves => 0.2,
                 Block::Air => 1.0,
             };
             let progress = (mining_progress / required).clamp(0.0, 1.0);
