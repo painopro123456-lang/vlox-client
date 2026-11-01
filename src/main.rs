@@ -1,5 +1,5 @@
 use macroquad::prelude::*;
-use vlox_client::{cast_block_ray, generate_world, mine_block, place_block, Block, PhysicsBody, World};
+use vlox_client::{cast_block_ray, generate_world, mine_block, place_block, Block, Inventory, PhysicsBody, World};
 
 const BLOCK_SIZE: f32 = 1.0;
 const MOUSE_SENSITIVITY: f32 = 0.0025;
@@ -109,8 +109,7 @@ fn draw_world(world: &World) {
 #[macroquad::main(window_conf)]
 async fn main() {
     let mut world = generate_world(0x564C4F585F323032, 1);
-    let hotbar = [Block::Grass, Block::Dirt, Block::Stone, Block::Sand];
-    let mut selected_slot = 0_usize;
+    let mut inventory = Inventory::default();
     let mut world_status = String::from("World autosave file: vlox-world.dat");
     let mut mining_target: Option<[i32; 3]> = None;
     let mut mining_progress = 0.0_f32;
@@ -131,10 +130,10 @@ async fn main() {
         if !paused {
             player.update(&world, dt);
 
-            if is_key_pressed(KeyCode::Key1) { selected_slot = 0; }
-            if is_key_pressed(KeyCode::Key2) { selected_slot = 1; }
-            if is_key_pressed(KeyCode::Key3) { selected_slot = 2; }
-            if is_key_pressed(KeyCode::Key4) { selected_slot = 3; }
+            if is_key_pressed(KeyCode::Key1) { inventory.select(0); }
+            if is_key_pressed(KeyCode::Key2) { inventory.select(1); }
+            if is_key_pressed(KeyCode::Key3) { inventory.select(2); }
+            if is_key_pressed(KeyCode::Key4) { inventory.select(3); }
             if is_key_pressed(KeyCode::F5) {
                 world_status = match std::fs::File::create("vlox-world.dat")
                     .and_then(|file| world.save(file)) {
@@ -176,7 +175,9 @@ async fn main() {
                     };
                     mining_progress += dt;
                     if required_time <= 0.0 || mining_progress >= required_time {
-                        let _dropped_block = mine_block(&mut world, hit);
+                        if let Some(dropped_block) = mine_block(&mut world, hit) {
+                            inventory.add(dropped_block);
+                        }
                         mining_target = None;
                         mining_progress = 0.0;
                     }
@@ -191,7 +192,11 @@ async fn main() {
             if is_key_pressed(KeyCode::F) {
                 if let Some(hit) = cast_block_ray(&world, origin, direction, 5.0) {
                     let feet = player.body.position;
-                    place_block(&mut world, hit, hotbar[selected_slot], feet);
+                    if let Some(block) = inventory.selected_block() {
+                        if place_block(&mut world, hit, block, feet) {
+                            inventory.consume_selected();
+                        }
+                    }
                 }
             }
         }
@@ -243,11 +248,18 @@ async fn main() {
         let hotbar_width = 4.0 * 54.0 + 3.0 * 8.0;
         let hotbar_x = (screen_width() - hotbar_width) * 0.5;
         let hotbar_y = screen_height() - 76.0;
-        for (slot, block) in hotbar.iter().enumerate() {
+        for slot in 0..4 {
             let x = hotbar_x + slot as f32 * 62.0;
             draw_rectangle(x, hotbar_y, 54.0, 54.0, Color::new(0.035, 0.045, 0.06, 0.82));
-            draw_rectangle(x + 13.0, hotbar_y + 12.0, 28.0, 28.0, block_color(*block));
-            if slot == selected_slot {
+            if let Some(stack) = inventory.stack(slot) {
+                if let Some(block) = stack.block {
+                    if stack.count > 0 {
+                        draw_rectangle(x + 13.0, hotbar_y + 10.0, 28.0, 28.0, block_color(block));
+                        draw_text(&stack.count.to_string(), x + 34.0, hotbar_y + 50.0, 14.0, WHITE);
+                    }
+                }
+            }
+            if slot == inventory.selected_slot() {
                 draw_rectangle_lines(x - 2.0, hotbar_y - 2.0, 58.0, 58.0, 3.0, YELLOW);
             }
             draw_text(&(slot + 1).to_string(), x + 4.0, hotbar_y + 49.0, 12.0, WHITE);
