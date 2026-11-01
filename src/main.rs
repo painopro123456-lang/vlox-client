@@ -1,5 +1,5 @@
 use macroquad::prelude::*;
-use vlox_client::{cast_block_ray, Block, PhysicsBody, World};
+use vlox_client::{cast_block_ray, mine_block, place_block, Block, PhysicsBody, World};
 
 const WORLD_RADIUS: i32 = 12;
 const BLOCK_SIZE: f32 = 1.0;
@@ -130,24 +130,13 @@ async fn main() {
             let direction = [look.x, look.y, look.z];
             if is_mouse_button_pressed(MouseButton::Left) {
                 if let Some(hit) = cast_block_ray(&world, origin, direction, 5.0) {
-                    world.set_block(hit.block_position[0], hit.block_position[1], hit.block_position[2], Block::Air);
+                    let _dropped_block = mine_block(&mut world, hit);
                 }
             }
             if is_key_pressed(KeyCode::F) {
                 if let Some(hit) = cast_block_ray(&world, origin, direction, 5.0) {
-                    let [x, y, z] = hit.adjacent_position;
-                    let px = player.body.position[0];
-                    let py = player.body.position[1];
-                    let pz = player.body.position[2];
-                    let overlaps_player = x as f32 + 1.0 > px - 0.3
-                        && (x as f32) < px + 0.3
-                        && y as f32 + 1.0 > py
-                        && (y as f32) < py + 1.8
-                        && z as f32 + 1.0 > pz - 0.3
-                        && (z as f32) < pz + 0.3;
-                    if !overlaps_player && world.get_block(x, y, z) == Block::Air {
-                        world.set_block(x, y, z, hotbar[selected_slot]);
-                    }
+                    let feet = player.body.position;
+                    place_block(&mut world, hit, hotbar[selected_slot], feet);
                 }
             }
         }
