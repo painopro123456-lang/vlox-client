@@ -147,6 +147,34 @@ impl eframe::App for VloxApp {
         style.spacing.item_spacing = Vec2::new(10.0, 10.0);
         ctx.set_style(style);
 
+        egui::TopBottomPanel::top("custom_titlebar")
+            .exact_height(42.0)
+            .frame(egui::Frame::none().fill(Color32::from_rgb(12, 16, 24)))
+            .show(ctx, |ui| {
+                ui.horizontal(|ui| {
+                    ui.add_space(12.0);
+                    ui.label(RichText::new("V").size(20.0).strong().color(BLUE));
+                    ui.label(RichText::new("VLOX CLIENT").size(12.0).strong().color(WHITE));
+                    let drag = ui.allocate_response(
+                        Vec2::new((ui.available_width() - 132.0).max(0.0), 30.0),
+                        egui::Sense::click_and_drag(),
+                    );
+                    if drag.drag_started() {
+                        ctx.send_viewport_cmd(egui::ViewportCommand::StartDrag);
+                    }
+                    if ui.add_sized([36.0, 28.0], egui::Button::new("—").fill(Color32::TRANSPARENT).stroke(Stroke::NONE).rounding(5.0)).clicked() {
+                        ctx.send_viewport_cmd(egui::ViewportCommand::Minimized(true));
+                    }
+                    let maximized = ctx.input(|i| i.viewport().maximized.unwrap_or(false));
+                    if ui.add_sized([36.0, 28.0], egui::Button::new(if maximized { "❐" } else { "□" }).fill(Color32::TRANSPARENT).stroke(Stroke::NONE).rounding(5.0)).clicked() {
+                        ctx.send_viewport_cmd(egui::ViewportCommand::Maximized(!maximized));
+                    }
+                    if ui.add_sized([36.0, 28.0], egui::Button::new("×").fill(Color32::from_rgb(150, 45, 55)).stroke(Stroke::NONE).rounding(5.0)).clicked() {
+                        ctx.send_viewport_cmd(egui::ViewportCommand::Close);
+                    }
+                });
+            });
+
         egui::SidePanel::left("side")
             .exact_width(224.0)
             .frame(egui::Frame::none().fill(Color32::from_rgb(12, 16, 24)).inner_margin(egui::Margin::same(16.0)))
@@ -484,7 +512,8 @@ fn main() -> eframe::Result<()> {
         viewport: egui::ViewportBuilder::default()
             .with_title("VLOX CLIENT")
             .with_inner_size([1180.0, 800.0])
-            .with_min_inner_size([900.0, 680.0]),
+            .with_min_inner_size([900.0, 680.0])
+            .with_decorations(false),
         ..Default::default()
     };
     eframe::run_native("VLOX CLIENT", options, Box::new(|_| Ok(Box::new(VloxApp::default()))))
