@@ -1,6 +1,6 @@
 # VLOX CLIENT
 
-VLOX CLIENT is an independent Rust implementation project targeting the Minecraft Java Edition experience. It uses its own engine and code; it does not contain Mojang's proprietary source or bundled Minecraft assets.
+VLOX CLIENT is an independent Rust implementation project targeting the Minecraft Java Edition 26.2 experience. It uses its own engine and code; it does not contain Mojang's proprietary source or bundled Minecraft assets.
 
 ## Current implementation
 
