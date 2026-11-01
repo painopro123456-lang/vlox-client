@@ -224,11 +224,15 @@ mod tests {
     fn save_and_load_preserve_world_blocks_and_chunk_coordinates() {
         let mut world = World::new_flat_test_world();
         world.set_block(-17, 12, 31, Block::Sand);
+        world.set_block(7, 18, 7, Block::OakLog);
+        world.set_block(7, 19, 7, Block::OakLeaves);
         let mut bytes = Vec::new();
         world.save(&mut bytes).unwrap();
         let loaded = World::load(bytes.as_slice()).unwrap();
         assert_eq!(loaded.get_block(0, 3, 0), Block::Grass);
         assert_eq!(loaded.get_block(-17, 12, 31), Block::Sand);
+        assert_eq!(loaded.get_block(7, 18, 7), Block::OakLog);
+        assert_eq!(loaded.get_block(7, 19, 7), Block::OakLeaves);
         assert_eq!(loaded.get_block(16, 12, 31), Block::Air);
     }
 
