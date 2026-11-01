@@ -13,7 +13,7 @@ The repository currently contains an early playable voxel-engine prototype with:
 - Voxel raycasting with a five-block reach.
 - Hold-to-mine behavior with different mining times for grass, dirt, sand, and stone.
 - Block placement adjacent to the targeted block, with player-overlap prevention.
-- Four-slot survival hotbar, stack sizes up to 64, mined-block pickup, and item consumption when placing blocks.
+- Nine-slot survival hotbar, stack sizes up to 64, mined-block pickup, and item consumption when placing blocks.
 - Versioned binary world saving and loading.
 - Automated Rust tests for world data, generation, physics, raycasting, inventory, interactions, and persistence.
 
@@ -43,7 +43,7 @@ cargo build --release
 | Hold right mouse button | Look around |
 | Hold left mouse button | Mine targeted block |
 | F | Place selected block in the adjacent cell |
-| 1–4 | Select hotbar slot |
+| 1–9 | Select hotbar slot |
 | F5 | Save world to `vlox-world.dat` |
 | F9 | Load world from `vlox-world.dat` |
 | Escape | Pause / resume |
