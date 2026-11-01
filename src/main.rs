@@ -1,5 +1,5 @@
 use macroquad::prelude::*;
-use vlox_client::{Block, World};
+use vlox_client::{Block, PhysicsBody, World};
 
 const WORLD_RADIUS: i32 = 12;
 const BLOCK_SIZE: f32 = 1.0;
@@ -10,14 +10,16 @@ struct Player {
     position: Vec3,
     yaw: f32,
     pitch: f32,
+    body: PhysicsBody,
 }
 
 impl Player {
     fn new() -> Self {
         Self {
-            position: vec3(0.0, 2.0, 6.0),
+            position: vec3(0.0, 5.62, 6.0),
             yaw: 0.0,
             pitch: -0.18,
+            body: PhysicsBody::new([0.0, 4.0, 6.0]),
         }
     }
 
@@ -29,7 +31,7 @@ impl Player {
         ).normalize()
     }
 
-    fn update(&mut self, dt: f32) {
+    fn update(&mut self, world: &World, dt: f32) {
         let mut movement = Vec3::ZERO;
         let forward = vec3(self.yaw.sin(), 0.0, -self.yaw.cos());
         let right = vec3(self.yaw.cos(), 0.0, self.yaw.sin());
@@ -38,12 +40,17 @@ impl Player {
         if is_key_down(KeyCode::S) { movement -= forward; }
         if is_key_down(KeyCode::D) { movement += right; }
         if is_key_down(KeyCode::A) { movement -= right; }
-        if is_key_down(KeyCode::Space) { self.position.y += PLAYER_SPEED * dt; }
-        if is_key_down(KeyCode::LeftShift) { self.position.y -= PLAYER_SPEED * dt; }
-
-        if movement.length_squared() > 0.0 {
-            self.position += movement.normalize() * PLAYER_SPEED * dt;
-        }
+        self.body.tick(
+            world,
+            [movement.x, 0.0, movement.z],
+            is_key_pressed(KeyCode::Space),
+            dt,
+        );
+        self.position = vec3(
+            self.body.position[0],
+            self.body.position[1] + 1.62,
+            self.body.position[2],
+        );
 
         if is_mouse_button_down(MouseButton::Right) {
             let delta = mouse_delta_position();
@@ -100,7 +107,7 @@ async fn main() {
         }
 
         if !paused {
-            player.update(dt);
+            player.update(&world, dt);
         }
 
         clear_background(Color::new(0.48, 0.70, 0.91, 1.0));
@@ -128,7 +135,7 @@ async fn main() {
         draw_rectangle(18.0, 18.0, 235.0, 92.0, Color::new(0.035, 0.055, 0.085, 0.78));
         draw_text("VLOX CLIENT", 32.0, 48.0, 25.0, WHITE);
         draw_text(&format!("FPS  {}", shown_fps), 32.0, 73.0, 18.0, SKYBLUE);
-        draw_text("WASD move  |  SPACE/SHIFT fly  |  RMB look", 32.0, 98.0, 15.0, LIGHTGRAY);
+        draw_text("WASD move  |  SPACE jump  |  RMB look", 32.0, 98.0, 15.0, LIGHTGRAY);
 
         let cx = screen_width() * 0.5;
         let cy = screen_height() * 0.5;
