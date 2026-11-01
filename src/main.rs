@@ -87,7 +87,8 @@ fn block_color(block: Block) -> Color {
 fn draw_world(world: &World) {
     for x in -16..32_i32 {
         for z in -16..32_i32 {
-            for y in 0..64_i32 {
+            let top_y = world.surface_height(x, z).unwrap_or(0) as i32;
+            for y in 0..=top_y {
                 let block = world.get_block(x, y, z);
                 if block == Block::Air { continue; }
                 let exposed = world.get_block(x + 1, y, z) == Block::Air
@@ -232,10 +233,10 @@ async fn main() {
             fps_timer = 0.0;
         }
 
-        draw_rectangle(18.0, 18.0, 235.0, 92.0, Color::new(0.035, 0.055, 0.085, 0.78));
+        draw_rectangle(18.0, 18.0, 650.0, 150.0, Color::new(0.035, 0.055, 0.085, 0.78));
         draw_text("VLOX CLIENT", 32.0, 48.0, 25.0, WHITE);
         draw_text(&format!("FPS  {}", shown_fps), 32.0, 73.0, 18.0, SKYBLUE);
-        draw_text("WASD move | CTRL sprint | SPACE jump | RMB look | LMB mine | F place | 1-9 hotbar", 32.0, 98.0, 15.0, LIGHTGRAY);
+        draw_text("WASD move | CTRL sprint | SPACE jump | RMB look | LMB mine | F place | 1-9 hotbar", 32.0, 98.0, 13.0, LIGHTGRAY);
         draw_text("F5 save | F9 load", 32.0, 130.0, 15.0, LIGHTGRAY);
         draw_text(&world_status, 32.0, 154.0, 16.0, LIGHTGRAY);
 
