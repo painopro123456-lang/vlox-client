@@ -208,6 +208,19 @@ mod tests {
     }
 
     #[test]
+    fn distant_chunks_generate_deterministically() {
+        let a = generate_chunk(54321, -7, 11);
+        let b = generate_chunk(54321, -7, 11);
+        for x in 0..CHUNK_SIZE {
+            for z in 0..CHUNK_SIZE {
+                for y in 0..WORLD_HEIGHT {
+                    assert_eq!(a.get(x, y, z), b.get(x, y, z));
+                }
+            }
+        }
+    }
+
+    #[test]
     fn different_seeds_can_generate_different_heights() {
         let a = generate_world(1, 0);
         let b = generate_world(2, 0);
