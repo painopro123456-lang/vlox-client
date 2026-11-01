@@ -1,0 +1,9 @@
+[package]
+name = "vlox-client"
+version = "0.1.0"
+edition = "2021"
+description = "VLOX CLIENT - an independent Rust voxel game client prototype"
+license = "MIT"
+
+[dependencies]
+macroquad = "0.4.14"
