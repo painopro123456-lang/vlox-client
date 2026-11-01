@@ -1,4 +1,5 @@
 mod auth;
+mod library;
 
 use eframe::egui::{self, Align, Color32, FontId, Layout, RichText, Rounding, Stroke, Vec2};
 use std::sync::mpsc::{self, Receiver, Sender};
@@ -10,7 +11,7 @@ const MUTED: Color32 = Color32::from_rgb(145, 158, 180);
 const WHITE: Color32 = Color32::from_rgb(238, 243, 252);
 
 #[derive(Clone, Copy, PartialEq)]
-enum Page { Home, Mods, Settings, About }
+enum Page { Home, Mods, Modpacks, Settings, About }
 
 struct VloxApp {
     page: Page,
@@ -20,6 +21,10 @@ struct VloxApp {
     busy: bool,
     tx: Sender<auth::AuthEvent>,
     rx: Receiver<auth::AuthEvent>,
+    mods: Vec<String>,
+    instances: Vec<String>,
+    selected_instance: Option<String>,
+    library_status: String,
 }
 
 impl Default for VloxApp {
@@ -38,6 +43,10 @@ impl Default for VloxApp {
             busy: false,
             tx,
             rx,
+            mods: library::list_mods().unwrap_or_default(),
+            instances: library::list_instances().unwrap_or_default(),
+            selected_instance: None,
+            library_status: String::new(),
         }
     }
 }
@@ -113,7 +122,8 @@ impl VloxApp {
         }
         self.busy = true;
         self.status = "Starting Minecraft 26.2…".into();
-        auth::start_launch(self.tx.clone());
+        let instance_dir = self.selected_instance.as_deref().and_then(|name| library::instance_path(name).ok());
+        auth::start_launch_in(self.tx.clone(), instance_dir);
     }
 }
 
@@ -145,7 +155,8 @@ impl eframe::App for VloxApp {
                 ui.label(RichText::new("WORKSPACE").size(10.0).strong().color(MUTED));
                 ui.add_space(8.0);
                 self.nav(ui, "⌂   Home", Page::Home);
-                self.nav(ui, "▦   Mod Library", Page::Mods);
+                self.nav(ui, "▦   Mod Manager", Page::Mods);
+                self.nav(ui, "▤   Modpack Manager", Page::Modpacks);
                 self.nav(ui, "⚙   Settings", Page::Settings);
                 self.nav(ui, "ⓘ   About VLOX", Page::About);
                 ui.with_layout(Layout::bottom_up(Align::Min), |ui| {
@@ -250,15 +261,108 @@ impl eframe::App for VloxApp {
                     });
                 }
                 Page::Mods => {
-                    ui.heading(RichText::new("Mod Library").size(28.0).strong().color(WHITE));
-                    ui.label(RichText::new("VLOX installs its client mod and matching Fabric API automatically before launch.").color(MUTED));
-                    ui.add_space(20.0);
-                    Self::card(ui, |ui| {
-                        ui.label(RichText::new("VLOX In-game Client").size(18.0).strong().color(WHITE));
-                        ui.label(RichText::new("Minecraft 26.2 • Fabric • Right Shift opens the VLOX menu").color(MUTED));
-                        ui.add_space(8.0);
-                        ui.label(RichText::new("The mod and API are installed into .minecraft/mods whenever you launch.").color(MUTED));
+                    ui.heading(RichText::new("Mod Manager").size(28.0).strong().color(WHITE));
+                    ui.label(RichText::new("Manage Fabric .jar mods installed in your default Minecraft 26.2 profile.").color(MUTED));
+                    ui.add_space(14.0);
+                    ui.horizontal(|ui| {
+                        if ui.button("＋ Add .jar mod").clicked() {
+                            match library::add_mod() {
+                                Ok(message) => self.library_status = message,
+                                Err(error) => self.library_status = error,
+                            }
+                            self.mods = library::list_mods().unwrap_or_default();
+                        }
+                        if ui.button("Open mods folder").clicked() {
+                            if let Err(error) = library::open_mods_folder() { self.library_status = error; }
+                        }
+                        if ui.button("Refresh").clicked() { self.mods = library::list_mods().unwrap_or_default(); }
                     });
+                    if !self.library_status.is_empty() {
+                        ui.add_space(8.0);
+                        ui.label(RichText::new(&self.library_status).color(BLUE));
+                    }
+                    ui.add_space(12.0);
+                    Self::card(ui, |ui| {
+                        ui.horizontal(|ui| {
+                            ui.label(RichText::new(format!("INSTALLED MODS  ·  {}", self.mods.len())).strong().color(WHITE));
+                            ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+                                ui.label(RichText::new("Fabric / Minecraft 26.2").size(11.0).color(MUTED));
+                            });
+                        });
+                        ui.separator();
+                        if self.mods.is_empty() {
+                            ui.label(RichText::new("No .jar mods found yet. Add a mod or import a modpack.").color(MUTED));
+                        }
+                        for name in self.mods.clone() {
+                            ui.horizontal(|ui| {
+                                ui.label(RichText::new(&name).color(WHITE));
+                                ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+                                    if ui.small_button("Remove").clicked() {
+                                        match library::remove_mod(&name) {
+                                            Ok(()) => self.library_status = format!("Removed {name}."),
+                                            Err(error) => self.library_status = error,
+                                        }
+                                        self.mods = library::list_mods().unwrap_or_default();
+                                    }
+                                });
+                            });
+                        }
+                    });
+                    ui.add_space(10.0);
+                    ui.label(RichText::new("Changes to mods take effect the next time Minecraft starts. Only install mods you trust and that support Fabric 26.2.").size(11.0).color(MUTED));
+                }
+                Page::Modpacks => {
+                    ui.heading(RichText::new("Modpack Manager").size(28.0).strong().color(WHITE));
+                    ui.label(RichText::new("Import Modrinth .mrpack files. Each pack gets its own isolated game directory.").color(MUTED));
+                    ui.add_space(14.0);
+                    ui.horizontal(|ui| {
+                        if ui.button("＋ Import .mrpack").clicked() {
+                            self.library_status = match library::import_modpack() {
+                                Ok(message) => message,
+                                Err(error) => error,
+                            };
+                            self.instances = library::list_instances().unwrap_or_default();
+                        }
+                        if ui.button("Refresh").clicked() { self.instances = library::list_instances().unwrap_or_default(); }
+                    });
+                    if !self.library_status.is_empty() {
+                        ui.add_space(8.0);
+                        ui.label(RichText::new(&self.library_status).color(BLUE));
+                    }
+                    ui.add_space(12.0);
+                    Self::card(ui, |ui| {
+                        ui.label(RichText::new(format!("INSTALLED MODPACKS  ·  {}", self.instances.len())).strong().color(WHITE));
+                        ui.separator();
+                        if self.instances.is_empty() {
+                            ui.label(RichText::new("No modpacks installed. Import a Modrinth .mrpack to get started.").color(MUTED));
+                        }
+                        for name in self.instances.clone() {
+                            ui.horizontal(|ui| {
+                                let active = self.selected_instance.as_deref() == Some(name.as_str());
+                                if ui.selectable_label(active, RichText::new(&name).color(WHITE)).clicked() {
+                                    self.selected_instance = Some(name.clone());
+                                    self.library_status = format!("{name} selected. Use Launch Minecraft on Home to start this instance.");
+                                }
+                                ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+                                    if ui.small_button("Delete").clicked() {
+                                        if self.selected_instance.as_deref() == Some(name.as_str()) { self.selected_instance = None; }
+                                        self.library_status = match library::delete_instance(&name) {
+                                            Ok(()) => format!("Deleted {name}."),
+                                            Err(error) => error,
+                                        };
+                                        self.instances = library::list_instances().unwrap_or_default();
+                                    }
+                                });
+                            });
+                        }
+                    });
+                    ui.add_space(10.0);
+                    ui.label(RichText::new(if let Some(name) = self.selected_instance.as_deref() {
+                        format!("Active instance: {name}. Launch it from Home.")
+                    } else {
+                        "Default profile is active. Select an installed modpack to launch it.".to_owned()
+                    }).size(11.0).color(MUTED));
+                    ui.label(RichText::new("Current support: Modrinth .mrpack · Fabric · Minecraft 26.2.").size(11.0).color(MUTED));
                 }
                 Page::Settings => {
                     ui.heading(RichText::new("Settings").size(28.0).strong().color(WHITE));
