@@ -1,4 +1,5 @@
 use macroquad::prelude::*;
+use vlox_client::{Block, World};
 
 const WORLD_RADIUS: i32 = 12;
 const BLOCK_SIZE: f32 = 1.0;
@@ -65,42 +66,26 @@ fn window_conf() -> Conf {
     }
 }
 
-fn draw_world() {
-    // A small procedural block world: no proprietary game assets are bundled.
-    for x in -WORLD_RADIUS..=WORLD_RADIUS {
-        for z in -WORLD_RADIUS..=WORLD_RADIUS {
-            let edge = x.abs() == WORLD_RADIUS || z.abs() == WORLD_RADIUS;
-            let tint = if edge {
-                Color::new(0.19, 0.43, 0.28, 1.0)
-            } else if (x + z) % 5 == 0 {
-                Color::new(0.30, 0.62, 0.34, 1.0)
-            } else {
-                Color::new(0.25, 0.54, 0.30, 1.0)
-            };
-            draw_cube(
-                vec3(x as f32 * BLOCK_SIZE, -0.5, z as f32 * BLOCK_SIZE),
-                vec3(BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE),
-                None,
-                Some(tint),
-            );
+fn draw_world(world: &World) {
+    // Draw columns from the actual chunk/block data model.
+    for x in 0..16_i32 {
+        for z in 0..16_i32 {
+            if let Some(top_y) = world.surface_height(x, z) {
+                let height = top_y as f32 + 1.0;
+                let center = vec3(x as f32, height * 0.5 - 0.5, z as f32);
+                draw_cube(center, vec3(BLOCK_SIZE, height, BLOCK_SIZE), None, None);
+                draw_cube_wires(center, vec3(BLOCK_SIZE, height, BLOCK_SIZE), Color::new(0.12, 0.20, 0.16, 0.35));
+                if world.get_block(x, top_y as i32, z) == Block::Grass {
+                    draw_cube(vec3(x as f32, top_y as f32, z as f32), vec3(0.96, 0.08, 0.96), None, None);
+                }
+            }
         }
-    }
-
-    // A few raised blocks make the prototype world visibly voxel-based.
-    for (x, y, z, color) in [
-        (2.0, 0.0, 1.0, Color::new(0.48, 0.48, 0.52, 1.0)),
-        (2.0, 1.0, 1.0, Color::new(0.48, 0.48, 0.52, 1.0)),
-        (3.0, 0.0, 1.0, Color::new(0.48, 0.48, 0.52, 1.0)),
-        (-3.0, 0.0, -2.0, Color::new(0.55, 0.38, 0.22, 1.0)),
-        (-3.0, 1.0, -2.0, Color::new(0.55, 0.38, 0.22, 1.0)),
-    ] {
-        draw_cube(vec3(x, y, z), vec3(1.0, 1.0, 1.0), None, Some(color));
-        draw_cube_wires(vec3(x, y, z), vec3(1.0, 1.0, 1.0), BLACK);
     }
 }
 
 #[macroquad::main(window_conf)]
 async fn main() {
+    let world = World::new_flat_test_world();
     let mut player = Player::new();
     let mut paused = false;
     let mut frames = 0_u32;
@@ -129,7 +114,7 @@ async fn main() {
             ..Default::default()
         };
         set_camera(&camera);
-        draw_world();
+        draw_world(&world);
         set_default_camera();
 
         frames += 1;
