@@ -27,14 +27,16 @@ jobs:
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '21'
+          java-version: '25'
       - uses: gradle/actions/setup-gradle@v4
-      - name: Build Fabric mod
+        with:
+          gradle-version: '9.5.1'
+      - name: Build Fabric mod for Minecraft 26.2
         working-directory: client-mod
         run: gradle build
-      - name: Upload Fabric mod
+      - name: Upload Fabric 26.2 mod
         uses: actions/upload-artifact@v4
         with:
-          name: VLOX-CLIENT-Fabric-1.21.1
+          name: VLOX-CLIENT-Fabric-26.2
           path: client-mod/build/libs/vlox-client-mod-0.1.0.jar
           if-no-files-found: error
