@@ -80,10 +80,10 @@ fn draw_world(world: &World) {
             if let Some(top_y) = world.surface_height(x, z) {
                 let height = top_y as f32 + 1.0;
                 let center = vec3(x as f32, height * 0.5 - 0.5, z as f32);
-                draw_cube(center, vec3(BLOCK_SIZE, height, BLOCK_SIZE), None, None);
+                draw_cube(center, vec3(BLOCK_SIZE, height, BLOCK_SIZE), None, Color::new(0.25, 0.54, 0.30, 1.0));
                 draw_cube_wires(center, vec3(BLOCK_SIZE, height, BLOCK_SIZE), Color::new(0.12, 0.20, 0.16, 0.35));
                 if world.get_block(x, top_y as i32, z) == Block::Grass {
-                    draw_cube(vec3(x as f32, top_y as f32, z as f32), vec3(0.96, 0.08, 0.96), None, None);
+                    draw_cube(vec3(x as f32, top_y as f32, z as f32), vec3(0.96, 0.08, 0.96), None, Color::new(0.30, 0.68, 0.32, 1.0));
                 }
             }
         }
