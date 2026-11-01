@@ -92,6 +92,8 @@ fn block_color(block: Block) -> Color {
         Block::Sand => Color::new(0.83, 0.76, 0.52, 1.0),
         Block::OakLog => Color::new(0.42, 0.27, 0.14, 1.0),
         Block::OakLeaves => Color::new(0.19, 0.48, 0.20, 1.0),
+        Block::CoalOre => Color::new(0.24, 0.25, 0.27, 1.0),
+        Block::IronOre => Color::new(0.70, 0.49, 0.39, 1.0),
     }
 }
 
@@ -202,6 +204,8 @@ async fn main() {
                         Block::Stone => 7.50,
                         Block::OakLog => 2.0,
                         Block::OakLeaves => 0.2,
+                        Block::CoalOre => 3.0,
+                        Block::IronOre => 15.0,
                         Block::Air => 0.0,
                     };
                     mining_progress += dt;
@@ -270,6 +274,8 @@ async fn main() {
                 Block::Stone => 7.50,
                 Block::OakLog => 2.0,
                 Block::OakLeaves => 0.2,
+                Block::CoalOre => 3.0,
+                Block::IronOre => 15.0,
                 Block::Air => 1.0,
             };
             let progress = (mining_progress / required).clamp(0.0, 1.0);
