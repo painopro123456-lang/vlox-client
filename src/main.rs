@@ -1,9 +1,8 @@
 use macroquad::prelude::*;
-use vlox_client::{Block, PhysicsBody, World};
+use vlox_client::{cast_block_ray, Block, PhysicsBody, World};
 
 const WORLD_RADIUS: i32 = 12;
 const BLOCK_SIZE: f32 = 1.0;
-const PLAYER_SPEED: f32 = 6.0;
 const MOUSE_SENSITIVITY: f32 = 0.0025;
 
 struct Player {
@@ -73,18 +72,28 @@ fn window_conf() -> Conf {
     }
 }
 
+fn block_color(block: Block) -> Color {
+    match block {
+        Block::Air => BLANK,
+        Block::Grass => Color::new(0.30, 0.66, 0.28, 1.0),
+        Block::Dirt => Color::new(0.48, 0.31, 0.18, 1.0),
+        Block::Stone => Color::new(0.48, 0.49, 0.51, 1.0),
+        Block::Sand => Color::new(0.83, 0.76, 0.52, 1.0),
+    }
+}
+
 fn draw_world(world: &World) {
-    // Draw columns from the actual chunk/block data model.
     for x in 0..16_i32 {
         for z in 0..16_i32 {
-            if let Some(top_y) = world.surface_height(x, z) {
-                let height = top_y as f32 + 1.0;
-                let center = vec3(x as f32, height * 0.5 - 0.5, z as f32);
-                draw_cube(center, vec3(BLOCK_SIZE, height, BLOCK_SIZE), None, Color::new(0.25, 0.54, 0.30, 1.0));
-                draw_cube_wires(center, vec3(BLOCK_SIZE, height, BLOCK_SIZE), Color::new(0.12, 0.20, 0.16, 0.35));
-                if world.get_block(x, top_y as i32, z) == Block::Grass {
-                    draw_cube(vec3(x as f32, top_y as f32, z as f32), vec3(0.96, 0.08, 0.96), None, Color::new(0.30, 0.68, 0.32, 1.0));
-                }
+            for y in 0..64_i32 {
+                let block = world.get_block(x, y, z);
+                if block == Block::Air { continue; }
+                draw_cube(
+                    vec3(x as f32, y as f32, z as f32),
+                    vec3(BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE),
+                    None,
+                    block_color(block),
+                );
             }
         }
     }
@@ -92,7 +101,9 @@ fn draw_world(world: &World) {
 
 #[macroquad::main(window_conf)]
 async fn main() {
-    let world = World::new_flat_test_world();
+    let mut world = World::new_flat_test_world();
+    let hotbar = [Block::Grass, Block::Dirt, Block::Stone, Block::Sand];
+    let mut selected_slot = 0_usize;
     let mut player = Player::new();
     let mut paused = false;
     let mut frames = 0_u32;
@@ -108,6 +119,37 @@ async fn main() {
 
         if !paused {
             player.update(&world, dt);
+
+            if is_key_pressed(KeyCode::Key1) { selected_slot = 0; }
+            if is_key_pressed(KeyCode::Key2) { selected_slot = 1; }
+            if is_key_pressed(KeyCode::Key3) { selected_slot = 2; }
+            if is_key_pressed(KeyCode::Key4) { selected_slot = 3; }
+
+            let look = player.forward();
+            let origin = [player.position.x, player.position.y, player.position.z];
+            let direction = [look.x, look.y, look.z];
+            if is_mouse_button_pressed(MouseButton::Left) {
+                if let Some(hit) = cast_block_ray(&world, origin, direction, 5.0) {
+                    world.set_block(hit.block_position[0], hit.block_position[1], hit.block_position[2], Block::Air);
+                }
+            }
+            if is_key_pressed(KeyCode::F) {
+                if let Some(hit) = cast_block_ray(&world, origin, direction, 5.0) {
+                    let [x, y, z] = hit.adjacent_position;
+                    let px = player.body.position[0];
+                    let py = player.body.position[1];
+                    let pz = player.body.position[2];
+                    let overlaps_player = x as f32 + 1.0 > px - 0.3
+                        && (x as f32) < px + 0.3
+                        && y as f32 + 1.0 > py
+                        && (y as f32) < py + 1.8
+                        && z as f32 + 1.0 > pz - 0.3
+                        && (z as f32) < pz + 0.3;
+                    if !overlaps_player && world.get_block(x, y, z) == Block::Air {
+                        world.set_block(x, y, z, hotbar[selected_slot]);
+                    }
+                }
+            }
         }
 
         clear_background(Color::new(0.48, 0.70, 0.91, 1.0));
@@ -135,7 +177,20 @@ async fn main() {
         draw_rectangle(18.0, 18.0, 235.0, 92.0, Color::new(0.035, 0.055, 0.085, 0.78));
         draw_text("VLOX CLIENT", 32.0, 48.0, 25.0, WHITE);
         draw_text(&format!("FPS  {}", shown_fps), 32.0, 73.0, 18.0, SKYBLUE);
-        draw_text("WASD move  |  SPACE jump  |  RMB look", 32.0, 98.0, 15.0, LIGHTGRAY);
+        draw_text("WASD move | SPACE jump | RMB look | LMB mine | F place", 32.0, 98.0, 15.0, LIGHTGRAY);
+
+        let hotbar_width = 4.0 * 54.0 + 3.0 * 8.0;
+        let hotbar_x = (screen_width() - hotbar_width) * 0.5;
+        let hotbar_y = screen_height() - 76.0;
+        for (slot, block) in hotbar.iter().enumerate() {
+            let x = hotbar_x + slot as f32 * 62.0;
+            draw_rectangle(x, hotbar_y, 54.0, 54.0, Color::new(0.035, 0.045, 0.06, 0.82));
+            draw_rectangle(x + 13.0, hotbar_y + 12.0, 28.0, 28.0, block_color(*block));
+            if slot == selected_slot {
+                draw_rectangle_lines(x - 2.0, hotbar_y - 2.0, 58.0, 58.0, 3.0, YELLOW);
+            }
+            draw_text(&(slot + 1).to_string(), x + 4.0, hotbar_y + 49.0, 12.0, WHITE);
+        }
 
         let cx = screen_width() * 0.5;
         let cy = screen_height() * 0.5;
