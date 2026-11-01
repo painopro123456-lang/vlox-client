@@ -13,7 +13,7 @@ impl Default for VloxApp {
  fn default()->Self { Self { page:Page::Home, status:"Ready when you are.".into(), version:"1.21.1".into() } }
 }
 impl VloxApp {
- fn card<R>(&self,ui:&mut egui::Ui,f:impl FnOnce(&mut egui::Ui)->R)->R {
+ fn card<R>(ui:&mut egui::Ui,f:impl FnOnce(&mut egui::Ui)->R)->R {
   egui::Frame::none().fill(PANEL).rounding(Rounding::same(15.0)).stroke(Stroke::new(1.0,Color32::from_rgb(37,47,65))).inner_margin(egui::Margin::same(18.0)).show(ui,f).inner
  }
  fn nav(&mut self,ui:&mut egui::Ui,label:&str,page:Page) {
@@ -52,7 +52,7 @@ impl eframe::App for VloxApp {
      ui.set_min_height(170.0);ui.horizontal(|ui|{ui.vertical(|ui|{ui.label(RichText::new("MADE FOR YOUR NEXT WORLD").size(10.0).strong().color(BLUE));ui.add_space(8.0);ui.label(RichText::new("Make Minecraft\nfeel like yours.").size(27.0).strong().color(WHITE));ui.add_space(14.0);if ui.add_sized([180.0,40.0],egui::Button::new(RichText::new("Open Minecraft").strong()).fill(BLUE).rounding(9.0)).clicked(){self.open_game();}});ui.with_layout(Layout::right_to_left(Align::Center),|ui|{ui.label(RichText::new("V").size(116.0).strong().color(Color32::from_rgb(48,83,137)));});});
     });ui.add_space(18.0);
     ui.columns(2,|c|{
-     self.card(&mut c[0],|ui|{ui.label(RichText::new("IN-GAME CLIENT").size(10.0).strong().color(MUTED));ui.label(RichText::new("VLOX Interface").size(19.0).strong().color(WHITE));ui.label(RichText::new("HUD, modules and visual settings inside Minecraft.").color(MUTED));ui.add_space(10.0);if ui.button("Install client mod").clicked(){self.install();}});
+     Self::card(&mut c[0],|ui|{ui.label(RichText::new("IN-GAME CLIENT").size(10.0).strong().color(MUTED));ui.label(RichText::new("VLOX Interface").size(19.0).strong().color(WHITE));ui.label(RichText::new("HUD, modules and visual settings inside Minecraft.").color(MUTED));ui.add_space(10.0);if ui.button("Install client mod").clicked(){self.install();}});
      self.card(&mut c[1],|ui|{ui.label(RichText::new("GAME PROFILE").size(10.0).strong().color(MUTED));ui.label(RichText::new("Minecraft Java").size(19.0).strong().color(WHITE));ui.label(RichText::new("Fabric client profile").color(MUTED));ui.add_space(8.0);ui.horizontal(|ui|{ui.label("Target");egui::ComboBox::from_id_source("version").selected_text(&self.version).show_ui(ui,|ui|{for v in ["1.21.1","1.20.1"]{ui.selectable_value(&mut self.version,v.into(),v);}});});});
     });ui.add_space(16.0);self.card(ui,|ui|{ui.label(RichText::new("ACTIVITY").size(10.0).strong().color(MUTED));ui.label(RichText::new(&self.status).color(WHITE));});
    },
