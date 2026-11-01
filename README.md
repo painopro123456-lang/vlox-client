@@ -11,6 +11,7 @@ The repository currently contains an early playable voxel-engine prototype with:
 - 16 × 16 × 64 block chunks with deterministic per-chunk terrain generation and runtime chunk streaming as the player explores.
 - First-person movement, gravity, jumping, solid-block collision, and sprinting.
 - Survival health and food meters, fall damage, food-based regeneration, and starvation damage.
+- A 20-minute day/night cycle with a changing sky color.
 - Voxel raycasting with a five-block reach.
 - Hold-to-mine behavior with different mining times for grass, dirt, sand, and stone.
 - Block placement adjacent to the targeted block, with player-overlap prevention.
