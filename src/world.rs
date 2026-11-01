@@ -18,6 +18,8 @@ pub enum Block {
     Sand = 4,
     OakLog = 5,
     OakLeaves = 6,
+    CoalOre = 7,
+    IronOre = 8,
 }
 
 impl Block {
@@ -143,6 +145,8 @@ impl World {
                     4 => Block::Sand,
                     5 => Block::OakLog,
                     6 => Block::OakLeaves,
+                    7 => Block::CoalOre,
+                    8 => Block::IronOre,
                     _ => return Err(io::Error::new(io::ErrorKind::InvalidData, "unknown block ID")),
                 };
             }
