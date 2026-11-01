@@ -162,6 +162,14 @@ async fn main() {
             }
         }
 
+        if !vitals.is_alive() && is_key_pressed(KeyCode::R) {
+            let respawn_y = world.surface_height(0, 6).unwrap_or(24) as f32 + 1.0;
+            player = Player::new(respawn_y);
+            vitals = Vitals::default();
+            mining_target = None;
+            mining_progress = 0.0;
+        }
+
         if !paused {
             world_clock.tick(dt);
             if vitals.is_alive() {
@@ -348,6 +356,7 @@ async fn main() {
             let title = "YOU DIED";
             let width = measure_text(title, None, 48, 1.0).width;
             draw_text(title, (screen_width() - width) * 0.5, screen_height() * 0.5, 48.0, WHITE);
+            draw_text("Press R to respawn", screen_width() * 0.5 - 95.0, screen_height() * 0.5 + 42.0, 22.0, WHITE);
         }
 
         if paused {
