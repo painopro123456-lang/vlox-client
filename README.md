@@ -1,44 +1,51 @@
 # VLOX CLIENT
 
-VLOX CLIENT is a custom Minecraft Java client experience with two parts:
+VLOX CLIENT is a native Minecraft Java launcher and client for **Minecraft Java 26.2**.
 
-- **VLOX Desktop** — a native desktop companion with a launcher-style interface.
-- **VLOX In-game** — a Fabric client mod with the VLOX menu and client-side HUD options.
+## Included features
 
-This is an independent client-side add-on, not a replacement Minecraft game engine. It does not bundle Mojang assets.
+- Microsoft account sign-in through Microsoft OAuth, Xbox Live, XSTS and Minecraft Services.
+- Minecraft profile validation before launch.
+- Saved Microsoft session in Windows Credential Manager (not a plaintext token file).
+- Direct Minecraft Java 26.2 launch from VLOX; the official Minecraft Launcher is not required to start the game.
+- Automatic download and installation of Minecraft assets, libraries, natives and the matching Java runtime.
+- Automatic Fabric Loader profile setup.
+- Bundled VLOX Fabric mod and Fabric API, installed into `.minecraft/mods` before launch.
+- In-game VLOX menu opened with **Right Shift**.
 
-## Target version
+VLOX does not bundle Mojang's game files. It downloads required Minecraft files from the official metadata and asset sources when you launch.
 
-**Minecraft Java 26.2**, Fabric Loader 0.19.3, Fabric API 0.161.0+26.2, and Java 25.
+## Build requirements
 
-The in-game menu opens with **Right Shift**. The current foundation includes Home, HUD, Modules and Settings sections, plus FPS and coordinates HUD toggles.
+- Windows 10/11 x64 for the current desktop build.
+- Rust stable.
+- JDK 25.
+- Gradle 9.5.1.
+- Network access to Microsoft, Mojang, Fabric and Maven download services.
 
-## Current desktop foundation
+The Windows workflow builds the Fabric mod and downloads the matching Fabric API first, then embeds both JARs into the VLOX executable. The EXE can therefore install its client components without requiring the repository checkout.
 
-The desktop app can open the installed Minecraft Launcher and copy the locally built VLOX mod JAR into the default Windows `.minecraft/mods` directory. It does not yet perform Microsoft authentication, install the Minecraft 26.2 profile automatically, or launch the game directly.
+## Local build
 
-## Build
+Build the mod first with Gradle in `client-mod`. Download Fabric API 0.161.0+26.2 to `client-mod/build/libs/fabric-api-0.161.0+26.2.jar`, then run `cargo build --release` from the repository root.
 
-Desktop (stable Rust):
-```sh
-cargo run
-cargo build --release
-```
+The executable is created at `target/release/vlox-client.exe`.
 
-Fabric mod (JDK 25 and Gradle 9.5.1):
-```sh
-cd client-mod
-gradle build
-```
+## First launch
 
-The mod JAR is created in `client-mod/build/libs`.
+1. Open VLOX CLIENT.
+2. Select **Sign in with Microsoft**.
+3. Complete the displayed device-code sign-in in your browser.
+4. After your Minecraft Java profile is verified, select **Launch Minecraft**.
+5. On the first launch VLOX downloads the 26.2 game files, Java runtime and Fabric components. Later launches reuse the installed files and saved account session.
 
-## Install
+## Account security
 
-1. Install Fabric Loader for Minecraft Java **26.2**.
-2. Install Fabric API **0.161.0+26.2**.
-3. Build the desktop app and Fabric mod, or download the matching GitHub Actions artifacts.
-4. In VLOX Desktop, open **Mod Library** and install the VLOX mod.
-5. Start the Fabric 26.2 profile from the official Minecraft Launcher.
+The Microsoft account session is stored using Windows Credential Manager. Signing out removes the saved VLOX credential. Never share your Microsoft access or refresh tokens.
 
-The Fabric mod is version-locked to 26.2 and will not load on 1.21.x or other Minecraft versions.
+## Current target
+
+- Minecraft Java: **26.2**
+- Java runtime: **25**
+- Fabric Loader: **0.19.3 or latest compatible**
+- Fabric API bundled: **0.161.0+26.2**
