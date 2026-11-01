@@ -75,6 +75,10 @@ pub fn sign_out() -> Result<(), String> {
 }
 
 pub fn start_launch(sender: Sender<AuthEvent>) {
+    start_launch_in(sender, None);
+}
+
+pub fn start_launch_in(sender: Sender<AuthEvent>, game_directory: Option<PathBuf>) {
     thread::spawn(move || {
         let result = run_async(async {
             let (refresh_token, _) = load_session()?
@@ -87,7 +91,10 @@ pub fn start_launch(sender: Sender<AuthEvent>) {
                 .map_err(|error| format!("Could not refresh your Minecraft profile: {error}"))?;
             save_account(&account)?;
 
-            let minecraft_dir = minecraft_directory()?;
+            let minecraft_dir = match game_directory {
+                Some(path) => path,
+                None => minecraft_directory()?,
+            };
             install_client_mods(&minecraft_dir)?;
 
             let mut options = LaunchOptions::new(&minecraft_dir, MINECRAFT_VERSION);
