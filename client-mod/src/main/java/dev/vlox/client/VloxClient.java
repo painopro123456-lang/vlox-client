@@ -12,7 +12,6 @@ import org.lwjgl.glfw.GLFW;
 public final class VloxClient implements ClientModInitializer {
     public static boolean showCoordinates = true;
     public static boolean showFps = true;
-    public static boolean cleanChat = false;
 
     @Override
     public void onInitializeClient() {
