@@ -87,6 +87,13 @@ fn draw_world(world: &World) {
             for y in 0..64_i32 {
                 let block = world.get_block(x, y, z);
                 if block == Block::Air { continue; }
+                let exposed = world.get_block(x + 1, y, z) == Block::Air
+                    || world.get_block(x - 1, y, z) == Block::Air
+                    || world.get_block(x, y + 1, z) == Block::Air
+                    || world.get_block(x, y - 1, z) == Block::Air
+                    || world.get_block(x, y, z + 1) == Block::Air
+                    || world.get_block(x, y, z - 1) == Block::Air;
+                if !exposed { continue; }
                 draw_cube(
                     vec3(x as f32, y as f32, z as f32),
                     vec3(BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE),
