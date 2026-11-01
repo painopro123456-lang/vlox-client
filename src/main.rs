@@ -103,6 +103,7 @@ async fn main() {
     let mut world = generate_world(0x564C4F585F323032, 1);
     let hotbar = [Block::Grass, Block::Dirt, Block::Stone, Block::Sand];
     let mut selected_slot = 0_usize;
+    let mut world_status = String::from("World autosave file: vlox-world.dat");
     let spawn_y = world.surface_height(0, 6).unwrap_or(24) as f32 + 1.0;
     let mut player = Player::new(spawn_y);
     let mut paused = false;
@@ -124,6 +125,23 @@ async fn main() {
             if is_key_pressed(KeyCode::Key2) { selected_slot = 1; }
             if is_key_pressed(KeyCode::Key3) { selected_slot = 2; }
             if is_key_pressed(KeyCode::Key4) { selected_slot = 3; }
+            if is_key_pressed(KeyCode::F5) {
+                world_status = match std::fs::File::create("vlox-world.dat")
+                    .and_then(|file| world.save(file)) {
+                    Ok(()) => String::from("World saved"),
+                    Err(error) => format!("Save failed: {error}"),
+                };
+            }
+            if is_key_pressed(KeyCode::F9) {
+                world_status = match std::fs::File::open("vlox-world.dat")
+                    .and_then(World::load) {
+                    Ok(loaded) => {
+                        world = loaded;
+                        String::from("World loaded")
+                    }
+                    Err(error) => format!("Load failed: {error}"),
+                };
+            }
 
             let look = player.forward();
             let origin = [player.position.x, player.position.y, player.position.z];
@@ -166,7 +184,8 @@ async fn main() {
         draw_rectangle(18.0, 18.0, 235.0, 92.0, Color::new(0.035, 0.055, 0.085, 0.78));
         draw_text("VLOX CLIENT", 32.0, 48.0, 25.0, WHITE);
         draw_text(&format!("FPS  {}", shown_fps), 32.0, 73.0, 18.0, SKYBLUE);
-        draw_text("WASD move | SPACE jump | RMB look | LMB mine | F place", 32.0, 98.0, 15.0, LIGHTGRAY);
+        draw_text("WASD move | SPACE jump | RMB look | LMB mine | F place | F5 save | F9 load", 32.0, 98.0, 15.0, LIGHTGRAY);
+        draw_text(&world_status, 32.0, 130.0, 16.0, LIGHTGRAY);
 
         let hotbar_width = 4.0 * 54.0 + 3.0 * 8.0;
         let hotbar_x = (screen_width() - hotbar_width) * 0.5;
