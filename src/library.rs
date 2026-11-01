@@ -4,7 +4,7 @@ use std::{
     path::{Component, Path, PathBuf},
 };
 
-const CURSEFORGE_PROXY_BASE: &str = "https://vlox-curseforge-proxy.workers.dev";
+const CURSEFORGE_PROXY_BASE: &str = "https://vlox-curseforge-proxy.painopro123456.workers.dev";
 
 fn appdata() -> Result<PathBuf, String> {
     let root = std::env::var_os("APPDATA")
