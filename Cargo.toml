@@ -1,9 +1,16 @@
 [package]
 name = "vlox-client"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2021"
-description = "VLOX CLIENT desktop companion"
+description = "VLOX CLIENT - Minecraft Java 26.2 launcher"
 license = "MIT"
 
 [dependencies]
 eframe = { version = "0.29", default-features = false, features = ["default_fonts", "glow", "wayland", "x11"] }
+crust_core = "1.0.3"
+tokio = { version = "1.53.1", features = ["rt-multi-thread"] }
+serde_json = "1.0"
+webbrowser = "1"
+
+[target.'cfg(windows)'.dependencies]
+keyring = { version = "3", features = ["windows-native"] }
