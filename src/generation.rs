@@ -62,7 +62,7 @@ pub fn generate_world(seed: u64, chunk_radius: i32) -> World {
             world.set_block(x, base_y + y, z, Block::OakLog);
         }
         for dy in 2..=4 {
-            let radius = if dy == 4 { 1 } else { 2 };
+            let radius: i32 = if dy == 4 { 1 } else { 2 };
             for dz in -radius..=radius {
                 for dx in -radius..=radius {
                     if dx.abs() == radius && dz.abs() == radius && dy != 4 { continue; }
