@@ -25,6 +25,9 @@ struct VloxApp {
     instances: Vec<String>,
     selected_instance: Option<String>,
     library_status: String,
+    modrinth_query: String,
+    modrinth_results: Vec<library::ModrinthPack>,
+    curseforge_api_key: String,
 }
 
 impl Default for VloxApp {
@@ -47,6 +50,9 @@ impl Default for VloxApp {
             instances: library::list_instances().unwrap_or_default(),
             selected_instance: None,
             library_status: String::new(),
+            modrinth_query: String::new(),
+            modrinth_results: Vec::new(),
+            curseforge_api_key: String::new(),
         }
     }
 }
@@ -313,17 +319,65 @@ impl eframe::App for VloxApp {
                 }
                 Page::Modpacks => {
                     ui.heading(RichText::new("Modpack Manager").size(28.0).strong().color(WHITE));
-                    ui.label(RichText::new("Import Modrinth .mrpack files. Each pack gets its own isolated game directory.").color(MUTED));
+                    ui.label(RichText::new("Browse Modrinth packs or import packs exported from Modrinth and CurseForge. Each pack gets an isolated game directory.").color(MUTED));
                     ui.add_space(14.0);
                     ui.horizontal(|ui| {
-                        if ui.button("＋ Import .mrpack").clicked() {
+                        if ui.button("＋ Import Modrinth .mrpack").clicked() {
                             self.library_status = match library::import_modpack() {
                                 Ok(message) => message,
                                 Err(error) => error,
                             };
                             self.instances = library::list_instances().unwrap_or_default();
                         }
+                        if ui.button("＋ Import CurseForge ZIP").clicked() {
+                            self.library_status = match library::import_curseforge_modpack(&self.curseforge_api_key) {
+                                Ok(message) => message,
+                                Err(error) => error,
+                            };
+                            self.instances = library::list_instances().unwrap_or_default();
+                        }
                         if ui.button("Refresh").clicked() { self.instances = library::list_instances().unwrap_or_default(); }
+                    });
+                    ui.add_space(12.0);
+                    Self::card(ui, |ui| {
+                        ui.label(RichText::new("MODRINTH DISCOVERY").strong().color(WHITE));
+                        ui.horizontal(|ui| {
+                            ui.add_sized([360.0, 30.0], egui::TextEdit::singleline(&mut self.modrinth_query).hint_text("Search modpacks for Minecraft 26.2"));
+                            if ui.button("Search").clicked() {
+                                self.library_status = "Searching Modrinth…".to_owned();
+                                match library::search_modrinth_modpacks(&self.modrinth_query) {
+                                    Ok(results) => {
+                                        self.modrinth_results = results;
+                                        self.library_status = format!("Found {} Modrinth modpacks for Fabric / Minecraft 26.2.", self.modrinth_results.len());
+                                    }
+                                    Err(error) => self.library_status = error,
+                                }
+                            }
+                        });
+                        for pack in self.modrinth_results.clone() {
+                            ui.separator();
+                            ui.horizontal(|ui| {
+                                ui.vertical(|ui| {
+                                    ui.label(RichText::new(&pack.title).strong().color(WHITE));
+                                    ui.label(RichText::new(format!("{} downloads · {}", pack.downloads, pack.description)).size(11.0).color(MUTED));
+                                });
+                                ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+                                    if ui.button("Install").clicked() {
+                                        self.library_status = match library::install_modrinth_pack(&pack.slug) {
+                                            Ok(message) => message,
+                                            Err(error) => error,
+                                        };
+                                        self.instances = library::list_instances().unwrap_or_default();
+                                    }
+                                });
+                            });
+                        }
+                    });
+                    ui.add_space(10.0);
+                    Self::card(ui, |ui| {
+                        ui.label(RichText::new("CURSEFORGE IMPORT").strong().color(WHITE));
+                        ui.label(RichText::new("CurseForge requires an API key to download project files. Paste your key here for this session, then import a CurseForge exported ZIP.").size(11.0).color(MUTED));
+                        ui.add_sized([420.0, 30.0], egui::TextEdit::singleline(&mut self.curseforge_api_key).password(true).hint_text("CurseForge API key"));
                     });
                     if !self.library_status.is_empty() {
                         ui.add_space(8.0);
@@ -362,7 +416,7 @@ impl eframe::App for VloxApp {
                     } else {
                         "Default profile is active. Select an installed modpack to launch it.".to_owned()
                     }).size(11.0).color(MUTED));
-                    ui.label(RichText::new("Current support: Modrinth .mrpack · Fabric · Minecraft 26.2.").size(11.0).color(MUTED));
+                    ui.label(RichText::new("Support: Modrinth discovery / .mrpack import · CurseForge exported ZIP import · Fabric · Minecraft 26.2.").size(11.0).color(MUTED));
                 }
                 Page::Settings => {
                     ui.heading(RichText::new("Settings").size(28.0).strong().color(WHITE));
