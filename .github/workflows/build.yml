@@ -33,6 +33,7 @@ jobs:
       - name: Build VLOX Desktop (static Visual C++ runtime)
         env:
           RUSTFLAGS: -C target-feature=+crt-static
+          VLOX_CURSEFORGE_API_KEY: ${{ secrets.CURSEFORGE_API_KEY }}
         run: cargo build --release
       - name: Upload Windows executable
         uses: actions/upload-artifact@v4
