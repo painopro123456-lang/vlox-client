@@ -10,6 +10,7 @@ The repository currently contains an early playable voxel-engine prototype with:
 - Seeded procedural terrain with rolling height variation, grass/dirt/stone layers, sandy regions, and generated oak trees.
 - 16 × 16 × 64 block chunks with world-coordinate access across chunk boundaries.
 - First-person movement, gravity, jumping, solid-block collision, and sprinting.
+- Survival health and food meters, fall damage, food-based regeneration, and starvation damage.
 - Voxel raycasting with a five-block reach.
 - Hold-to-mine behavior with different mining times for grass, dirt, sand, and stone.
 - Block placement adjacent to the targeted block, with player-overlap prevention.
