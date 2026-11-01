@@ -6,7 +6,7 @@ pub mod raycast;
 pub mod survival;
 pub mod world;
 
-pub use generation::generate_world;
+pub use generation::{generate_chunk, generate_world};
 pub use interaction::{mine_block, place_block};
 pub use inventory::{Inventory, ItemStack, HOTBAR_SLOTS, MAX_STACK};
 pub use physics::PhysicsBody;
