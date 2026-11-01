@@ -1,5 +1,5 @@
 use macroquad::prelude::*;
-use vlox_client::{cast_block_ray, generate_world, mine_block, place_block, Block, Inventory, PhysicsBody, World};
+use vlox_client::{cast_block_ray, generate_world, mine_block, place_block, Block, Inventory, PhysicsBody, Vitals, World};
 
 const BLOCK_SIZE: f32 = 1.0;
 const MOUSE_SENSITIVITY: f32 = 0.0025;
@@ -9,6 +9,7 @@ struct Player {
     yaw: f32,
     pitch: f32,
     body: PhysicsBody,
+    fall_distance: f32,
 }
 
 impl Player {
@@ -18,6 +19,7 @@ impl Player {
             yaw: 0.0,
             pitch: -0.18,
             body: PhysicsBody::new([0.0, spawn_y, 6.0]),
+            fall_distance: 0.0,
         }
     }
 
@@ -29,7 +31,7 @@ impl Player {
         ).normalize()
     }
 
-    fn update(&mut self, world: &World, dt: f32) {
+    fn update(&mut self, world: &World, vitals: &mut Vitals, dt: f32) {
         let mut movement = Vec3::ZERO;
         let forward = vec3(self.yaw.sin(), 0.0, -self.yaw.cos());
         let right = vec3(self.yaw.cos(), 0.0, self.yaw.sin());
@@ -38,13 +40,22 @@ impl Player {
         if is_key_down(KeyCode::S) { movement -= forward; }
         if is_key_down(KeyCode::D) { movement += right; }
         if is_key_down(KeyCode::A) { movement -= right; }
+        let sprinting = is_key_down(KeyCode::LeftControl);
+        let was_grounded = self.body.grounded;
         self.body.tick_with_sprint(
             world,
             [movement.x, 0.0, movement.z],
             is_key_pressed(KeyCode::Space),
-            is_key_down(KeyCode::LeftControl),
+            sprinting,
             dt,
         );
+        if !was_grounded && self.body.grounded {
+            vitals.damage((self.fall_distance - 3.0).max(0.0));
+            self.fall_distance = 0.0;
+        } else if !self.body.grounded && self.body.velocity[1] < 0.0 {
+            self.fall_distance += -self.body.velocity[1] * dt;
+        }
+        vitals.tick(dt, sprinting);
         self.position = vec3(
             self.body.position[0],
             self.body.position[1] + 1.62,
@@ -113,6 +124,7 @@ fn draw_world(world: &World) {
 async fn main() {
     let mut world = generate_world(0x564C4F585F323032, 1);
     let mut inventory = Inventory::default();
+    let mut vitals = Vitals::default();
     let mut world_status = String::from("World autosave file: vlox-world.dat");
     let mut mining_target: Option<[i32; 3]> = None;
     let mut mining_progress = 0.0_f32;
@@ -131,7 +143,9 @@ async fn main() {
         }
 
         if !paused {
-            player.update(&world, dt);
+            if vitals.is_alive() {
+                player.update(&world, &mut vitals, dt);
+            }
 
             if is_key_pressed(KeyCode::Key1) { inventory.select(0); }
             if is_key_pressed(KeyCode::Key2) { inventory.select(1); }
@@ -243,6 +257,7 @@ async fn main() {
         draw_rectangle(18.0, 18.0, 650.0, 150.0, Color::new(0.035, 0.055, 0.085, 0.78));
         draw_text("VLOX CLIENT", 32.0, 48.0, 25.0, WHITE);
         draw_text(&format!("FPS  {}", shown_fps), 32.0, 73.0, 18.0, SKYBLUE);
+        draw_text(&format!("HP {:02}   FOOD {:02}", vitals.health.round() as u32, vitals.food.round() as u32), 155.0, 73.0, 17.0, WHITE);
         draw_text("WASD move | CTRL sprint | SPACE jump | RMB look | LMB mine | F place | 1-9 hotbar", 32.0, 98.0, 13.0, LIGHTGRAY);
         draw_text("F5 save | F9 load (world + inventory)", 32.0, 130.0, 15.0, LIGHTGRAY);
         draw_text(&world_status, 32.0, 154.0, 16.0, LIGHTGRAY);
@@ -288,6 +303,13 @@ async fn main() {
         let cy = screen_height() * 0.5;
         draw_line(cx - 7.0, cy, cx + 7.0, cy, 2.0, WHITE);
         draw_line(cx, cy - 7.0, cx, cy + 7.0, 2.0, WHITE);
+
+        if !vitals.is_alive() {
+            draw_rectangle(0.0, 0.0, screen_width(), screen_height(), Color::new(0.25, 0.01, 0.01, 0.72));
+            let title = "YOU DIED";
+            let width = measure_text(title, None, 48, 1.0).width;
+            draw_text(title, (screen_width() - width) * 0.5, screen_height() * 0.5, 48.0, WHITE);
+        }
 
         if paused {
             draw_rectangle(0.0, 0.0, screen_width(), screen_height(), Color::new(0.01, 0.02, 0.04, 0.72));
