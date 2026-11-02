@@ -9,7 +9,7 @@ use std::{
     thread,
 };
 
-const MICROSOFT_CLIENT_ID: &str = "09e6a2a2-90ee-47a6-92c4-f8810958de91";
+const MICROSOFT_CLIENT_ID: &str = "c8004f19-3f71-4508-b0ac-76dab2adde36";
 const SERVICE_NAME: &str = "VLOX CLIENT";
 const ACCOUNT_KEY: &str = "minecraft-account";
 const MINECRAFT_VERSION: &str = "26.2";
